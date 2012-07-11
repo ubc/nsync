@@ -23,18 +23,20 @@ class Nsync {
 		add_settings_field(
 			'nsync_options', // id
 			'Network sites publishers', // setting title
-			array( 'Nsync', 'display_input'), // display callback
+			array( 'Nsync', 'add_network_sites'), // display callback
 			'writing', // settings page
 			'remote_publishing' // settings section
 		);
+		
+		
 		
 		// register scipts and styles
 		wp_register_script( 'nsync-add-site', NSYNC_DIR_URL."/js/add-site.js", array( 'jquery', 'jquery-ui-autocomplete' ), '1.0', true );
 		wp_register_script( 'nsync-post-to', NSYNC_DIR_URL."/js/post-to.js", array( 'jquery', 'hoverIntent' ), '1.0', true );
 		wp_register_style( 'nsync-post-to', NSYNC_DIR_URL."/css/post-to.css", null, '1.0', 'screen' );
 	}
-	
-	public static function display_input() {
+	/* SETTINGS */ 
+	public static function add_network_sites() {
 		global $current_user;
 		
 		$current_blog_id = get_current_blog_id();
@@ -100,8 +102,7 @@ class Nsync {
 		$users = get_users( $args );
 
 		
-		
-				// limit 
+		// limit 
 		(int)$pagenum = ( isset( $_GET['num'] ) ? $_GET['num'] : 1 );
 		$per_page = 10;
 
@@ -139,12 +140,50 @@ class Nsync {
 			?>
 			<p style="border:1px solid #EEE; padding:10px; margin-top:10px;">
 				<label for="add-site">Search site to add </label><br />
-				<input type="text" id="nsync-add-site" class="regular-text" placeholder="Will try to find sites " /> 
+				<input type="text" id="nsync-add-site" class="regular-text" placeholder="url or site name " /> 
 				<br />
 				<small>Only available to Super Admins</small>
 			</p>
+			
+			
+			<p><label>Added Posts will appear in this category by default: <br />
+			
 			<?php
-
+			wp_dropdown_categories( array(
+				"hierarchical"=>1,
+				"name"=>"nsync_options[category]",
+				"selected"=> self::$settings['category'],
+				'show_option_none' => 'None' )
+				);
+			?>
+			</label></p>
+			<?php 
+			// Let the user check the post
+			// todo: add support for the EditFlow plugin
+			$post_status = self::$settings['post_status'];
+			
+			?>
+			<p>
+			<label>Select the Post Status <br />
+			<select name="nsync_options[post_status]">
+				<option value="0" 		<?php selected( $post_status, 0 ); ?>     		>Inherit from the post</option>
+				<option value="draft" 	<?php selected( $post_status, 'draft' ); ?> 	>Draft</option>
+				<option value="publish" <?php selected( $post_status, 'publish' ); ?> 	>Publish</option>
+				<option value="pending" <?php selected( $post_status, 'pending' ); ?> 	>Pending</option>
+			</select></label> 
+			</p>
+			<?php 
+			// force check to only users that are also members of this blog. 
+			
+			?>
+			<p>
+			<label><input type="checkbox" name="nsync_options[duplicate_files]" value="1" <?php checked( self::$settings['duplicate_files'] ); ?> /> Copy files that are attached to the post to this site.</label>
+			</p>
+			
+			<p>
+			<label><input type="checkbox" name="nsync_options[force_user]" value="1" <?php checked( self::$settings['force_user'] ); ?> /> Only Authors, Editor and Administrators are able to remotly publish to this site.</label>
+			</p>
+			<?php
 		endif;
 
 	}
@@ -234,13 +273,6 @@ class Nsync {
 		endif;
 	}
 	
-	public static function post_to_script_n_style() {
-		
-		wp_enqueue_script( 'nsync-post-to' );
-		wp_enqueue_style( 'nsync-post-to' );
-		
-	}
-	
 	public static function ajax_lookup_site() {
 		
 		if( !current_user_can( 'manage_sites' ) ):
@@ -256,6 +288,13 @@ class Nsync {
 		echo json_encode( $results );
 		die();
 
+	}
+	
+	public static function post_to_script_n_style() {
+		
+		wp_enqueue_script( 'nsync-post-to' );
+		wp_enqueue_style( 'nsync-post-to' );
+		
 	}
 	
 	public static function search_site( $s ) {
@@ -328,130 +367,56 @@ class Nsync {
 		// run the query 
 		
 		return $wpdb->get_results( $query, ARRAY_A );
-	
 	}
 	
-	
-	
+	public static function post_from_site() {
+		global $post;
+		$from = get_post_meta( $post->ID, 'nsync-from', false );
+		
+		if( !empty($from) ) {
+		
+			var_dump("from", $from );
+		
+		}
+	}
+	/* POST SIDE */
 	public static function user_select_site() {
 		global $post;
 		$post_to = get_option( 'nsync_post_to' );
+		
 		// change this line if you also want to effect pages. 
-		if( is_array( $post_to ) && $post->post_type == 'post'):
+		if( is_array( $post_to ) && $post->post_type == 'post' && !empty($post_to) ):
 		
-		$previous_to = get_post_meta( $post->ID, 'nsync-to', false );
-		
-		foreach( $post_to as $blog_id ): 
-				
-				$blog = get_blog_details( array( 'blog_id' => $blog_id ) );
-				$blogs[] = $blog;
-				
-				if( isset( $previous_to[0][$blog_id] ) )
-					$site_diplay[] = $blog->blogname;
+			$previous_to = get_post_meta( $post->ID, 'nsync-to', false );
+			
+			foreach( $post_to as $blog_id ): 
 					
-		endforeach;
-		
-		?>
-		<div class="misc-pub-section" id="shell-site-to-post">
-			
-			<label >Also publish to:</label>
-			
-			<span id="site-display"> <strong><?php echo ( is_array( $site_diplay ) ? implode( $site_diplay, ","): ""); ?></strong></span>
-			
-			<div id="site-to-post" class="hide-if-js">
-				<?php foreach( $blogs as $blog ): ?>
-				<label><input type="checkbox" name="nsync_post_to[]" value="<?php echo esc_attr($blog->blog_id); ?>" <?php echo checked( (bool)$previous_to[0][ $blog->blog_id] ); ?> alt="<?php echo esc_attr( $blog->blogname);?>" /> <?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small></label>
-				<?php endforeach; ?>
-			</div>
-		</div>
-	<?php 
-	    wp_nonce_field( 'nsync' , 'nsync_noncename' , false );
-		endif;
-	}
-	
-	
-	public static function save_postdata( $post_id, $post ) {
-	
-		
-		$current_blog_id = get_current_blog_id();
-		// verify if this is an auto save routine. 
-		// If it is our form has not been submitted, so we dont want to do anything
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
-		  return;
-		
-		
-		
-		// verify this came from the our screen and with proper authorization,
-		// because save_post can be triggered at other times
-		if ( !wp_verify_nonce( $_POST['nsync_noncename'], 'nsync' ) )
-			return;
-	
-	  
-		// Check permissions
-		if ( 'post' == $_POST['post_type'] && $post->post_type == 'post'  ){
-			if ( !current_user_can( 'edit_post', $post_id ) )
-			    return;
-		} else {
-			return;
-		}
-		
-		// don't go into an infinate loop
-		if( self::$currently_publishing )
-			return;
-			
-		self::$currently_publishing = true;
-		// OK, we're authenticated: we need to find and save the data
-		$blogs_to_post_to = $_POST['nsync_post_to'];
-		
-		$previous_to = get_post_meta( $post_id, 'nsync-to', false );
-	
-		if( is_array( $blogs_to_post_to ) ):
-			
-			unset( $post->ID ) ;
-			$from = array( 'blog' => $current_blog_id, 'post_id' => $post_id );
-			
-			$to = array();
-			foreach( $blogs_to_post_to as $blog_id ):
-				
-				switch_to_blog( $blog_id );
-				
-				$allowed_sites = get_option( 'nsync_options' );
-				// can I accually post there? 
-			
-				if( in_array( $current_blog_id, $allowed_sites['active'] ) ):
-					// create the new post
-					if( isset($previous_to[0][$blog_id]) )
-						$post->ID = (int)$previous_to[0][$blog_id];
+					$blog = get_blog_details( array( 'blog_id' => $blog_id ) );
+					$blogs[] = $blog;
 					
-					
-					$new_post_id = wp_insert_post( $post );
-					unset( $post->ID ); 
-					$to[ $blog_id ] = $new_post_id ;
-					// update the post 
-					// update the to
-					add_post_meta( $new_post_id, 'nsync-from', $from, true );  
-					
-				
-				endif;
-				
-				restore_current_blog();
+					if( isset( $previous_to[0][$blog_id] ) )
+						$site_diplay[] = $blog->blogname;
+						
 			endforeach;
 			
-			
-			// update the to			
-			if( $previous_to == null ) 
-				add_post_meta( $post_id, 'nsync-to', $to, true );  
-			else
-				update_post_meta( $post_id, 'nsync-to', $to, $previous_to );
-	  
-		
-		
+			?>
+			<div class="misc-pub-section" id="shell-site-to-post">
+				
+				<label >Also publish to:</label>
+				
+				<span id="site-display"> <strong><?php echo ( is_array( $site_diplay ) ? implode( $site_diplay, ","): ""); ?></strong></span>
+				
+				<div id="site-to-post" class="hide-if-js">
+					<?php foreach( $blogs as $blog ): ?>
+					<label><input type="checkbox" name="nsync_post_to[]" value="<?php echo esc_attr($blog->blog_id); ?>" <?php echo checked( (bool)$previous_to[0][ $blog->blog_id] ); ?> alt="<?php echo esc_attr( $blog->blogname);?>" /> <?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small></label>
+					<?php endforeach; ?>
+				</div>
+			</div>
+			<?php 
+		    wp_nonce_field( 'nsync' , 'nsync_noncename' , false );
 		endif;
-		
-		// Do something with $mydata 
-		// probably using add_post_meta(), update_post_meta(), or 
-		// a custom table (see Further Reading section below)
 	}
+
 }
 
 

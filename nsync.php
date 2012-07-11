@@ -16,6 +16,7 @@ define( 'NSYNC_BASENAME', plugin_basename(__FILE__) );
 define( 'NSYNC_DIR_URL',  plugins_url( ''  , NSYNC_BASENAME ) );
 
 require( 'lib/class.nsync.php' );
+require( 'lib/class.nsync-posts.php' );
 
 add_action( 'init',       		array( 'Nsync', 'init' ) );
 add_action( 'admin_init',       array( 'Nsync', 'admin_init' ) );
@@ -27,5 +28,5 @@ add_action( 'admin_print_styles-post.php', array( 'Nsync', 'post_to_script_n_sty
 add_action( 'wp_ajax_nsync_lookup_site',   array( 'Nsync', 'ajax_lookup_site' ) );
 
 add_action( 'post_submitbox_misc_actions', array( 'Nsync', 'user_select_site') );
-
-add_action( 'save_post', array( 'Nsync', 'save_postdata') , 10, 2 );
+add_action( 'post_submitbox_misc_actions', array( 'Nsync', 'post_from_site'), 9 );
+add_action( 'save_post', array( 'Nsync_Posts', 'save_postdata') , 10, 2 );
