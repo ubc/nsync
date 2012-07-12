@@ -30,3 +30,4 @@ add_action( 'wp_ajax_nsync_lookup_site',   array( 'Nsync', 'ajax_lookup_site' ) 
 add_action( 'post_submitbox_misc_actions', array( 'Nsync', 'user_select_site') );
 add_action( 'post_submitbox_misc_actions', array( 'Nsync', 'post_from_site'), 9 );
 add_action( 'save_post', array( 'Nsync_Posts', 'save_postdata') , 10, 2 );
+add_filter( 'post_updated_messages', array( 'Nsync_Posts', 'update_message'));

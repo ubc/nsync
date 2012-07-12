@@ -12,6 +12,7 @@ class Nsync_Posts {
 	static $update_post = false;
 	static $replacement = array();
 	static $current_attach_data = array();
+	static $featured_image = false;
 	
 	
 	public static function save_postdata( $post_id, $post ) {
@@ -52,7 +53,7 @@ class Nsync_Posts {
 		Nsync_Posts::clean_post( $post ); // 
 		Nsync_Posts::setup_taxonomies( $post_id );
 		Nsync_Posts::setup_attachments( $post_id );
-     	
+     	Nsync_Posts::setup_post_meta( $post_id );
 		
 		if( is_array( $blogs_to_post_to ) ):
 			
@@ -92,6 +93,7 @@ class Nsync_Posts {
 				restore_current_blog(); // revet to the current blog 
 			endforeach;
 			
+			add_settings_error( 'edit_post', 'the-id', 'hello', 'update' );
 			Nsync_Posts::update_nsync_to( $post_id, $to );
 			
 		
@@ -134,15 +136,17 @@ class Nsync_Posts {
 	
 	public static function path_to_file( $attachment_guid, $upload ) {
 		
-		$filename = explode( $upload["subdir"], $attachment_guid  );
-		return $upload["path"].$filename[1];
+		$stack = explode( 'files', $attachment_guid  );
+		$filename = array_pop( $stack );
+	
+		return $upload["basedir"].$filename;
 	}
 	
 	public static function copy_file( $attachment_guid ) {
 		
 		$current_file 	= Nsync_Posts::path_to_file( $attachment_guid, self::$current_upload );
 		$new_file 		= Nsync_Posts::path_to_file( $attachment_guid, wp_upload_dir() );
-	
+		
 		// copy the file
 		if( copy( $current_file, $new_file ) )
 			return $new_file;
@@ -151,7 +155,15 @@ class Nsync_Posts {
 	}
 	public static function setup_taxonomies( $post_id ) {
 	
-		$taxonomies = array('category', 'post_tag');
+		$taxonomies = array( 'category', 'post_tag' , 'post_format' );
+		/* $args= array(
+		  'public'   => true,
+		  '_builtin' => false,
+		  'show_ui'  => true,
+		  'object_type' => array('post')
+		);  
+		$tax = get_taxonomies('','names'); 
+		var_dump($tax); */
 		
 		$terms = wp_get_object_terms( $post_id, $taxonomies );
 		$new_terms = array();
@@ -161,9 +173,12 @@ class Nsync_Posts {
 			if($term->taxonomy == 'category'):
 				self::$new_categories[] = $term->name; // categories neews to have 
 			else:
+				
 				$new_terms[$term->taxonomy][] = $term->name;
 			endif;
 		endforeach;
+		// var_dump($new_terms);
+		// var_dump($taxonomies);
 		
 		self::$remote_post->tax_input = $new_terms;
 	}
@@ -178,13 +193,27 @@ class Nsync_Posts {
 
 	self::$attachments = Nsync_Posts::get_attachments( $post_id );  //returns Array ( [$image_ID]... 
 	self::$current_upload = wp_upload_dir();
+	self::$featured_image = get_post_thumbnail_id( $post_id  );
 	
+	$featured_image_not_found = true;
 	
 	foreach( self::$attachments as $attach ):
 		self::$current_attach_data[$attach->ID] = wp_get_attachment_metadata( $attach->ID );
+		
+		if( self::$featured_image == $attach->ID )
+			$featured_image_not_found = false;
  	endforeach;
+ 	
+ 	if( $featured_image_not_found &&  self::$featured_image ):
+ 		self::$current_attach_data[self::$featured_image] = wp_get_attachment_metadata( self::$featured_image );
+ 		self::$attachments[] = get_post( self::$featured_image );
+	endif;
+	 
+	
 	
 	}
+	
+	
 	
 	public static function get_attachments( $post_id ) {
 		$args = array(
@@ -227,6 +256,13 @@ class Nsync_Posts {
 		if( !empty( $new_categoriy_ids ) ):
 			self::$remote_post->post_category = $new_categoriy_ids;
 		endif;
+	
+	}
+	
+	public static function setup_post_meta( $post_id ) {
+		// post meta should be duplicated. 
+		// $meta = get_post_meta( $post_id );
+		// var_dump($meta);
 	
 	}
 	
@@ -274,7 +310,12 @@ class Nsync_Posts {
 	 			
 	  			wp_update_attachment_metadata( $attach_id,  $attach_data );
 	  			Nsync_Posts::update_content( $attach_data, self::$current_attach_data[$current_attachment_id], $new_post_id );
-			
+				
+				
+				// lets set the post_thumbnail 
+				if( self::$featured_image == $current_attachment_id )
+					set_post_thumbnail( $new_post_id, $attach_id );
+				
 			endforeach;
 		
 		endif;
@@ -285,8 +326,8 @@ class Nsync_Posts {
 		
 		// return;
 		$current_url = self::$current_upload['baseurl'];
-		$remote_upload =  wp_upload_dir();
-		$remote_url = $remote_upload['baseurl'];
+		
+		$remote_url = get_site_url().'/files';
 		
 		// set to empty array so that we don't worry about anything
 		self::$replacement = array();
@@ -305,7 +346,7 @@ class Nsync_Posts {
 				endif;
 			endforeach;
 		endif;
-		
+	
 		// replace all the string
 		$update['ID'] = $new_post_id;
   		$update['post_content'] = str_replace ( self::$replacement['current'] , self::$replacement['remote'] , self::$remote_post->post_content  );
@@ -319,6 +360,32 @@ class Nsync_Posts {
 			add_post_meta( $post_id, 'nsync-to', $to, true );  
 		else
 			update_post_meta( $post_id, 'nsync-to', $to, self::$previous_to );
+	}
+	
+	
+	public static function update_message( $messages ) {
+		global $post;
+		// var_dump($post->ID,  $messages['post']);
+		self::$previous_to = get_post_meta( $post->ID, 'nsync-to', true );
+			
+		if( !empty( self::$previous_to )  ):
+			
+			foreach( self::$previous_to as $blog_id => $post_id ):
+				$bloginfo = get_blog_details( array( 'blog_id' => $blog_id ) );
+				$end[] = '<em>'.$bloginfo->blogname.'</em> <a href="'.esc_url( $bloginfo->siteurl ).'/?p='.$post_id.'">view post</a>';
+			endforeach;
+			
+			$end = " " . implode( ", ",  $end );
+		
+			$messages['post'][1] .= '. - Also updated post on '. $end;
+			$messages['post'][4] .= '. - Also updated post on '. $end;
+			$messages['post'][6] .= '. - Also published post on '. $end;
+			$messages['post'][7] .= '. - Also saved on '. $end;
+			$messages['post'][8] .= '. - Also submitted posted on '. $end;
+			$messages['post'][9] .= '. - Also scheduled the post on '. $end;
+			$messages['post'][10] .= '. - Also updated draft on '. $end;
+		endif;
+		return $messages;
 	}
 	
 }

@@ -5,6 +5,7 @@ class Nsync {
 	// 
 	static $settings = array();
 	static $currently_publishing = false;
+	static $post_from = array();
 	public static function init() {
 		
 		
@@ -371,12 +372,15 @@ class Nsync {
 	
 	public static function post_from_site() {
 		global $post;
-		$from = get_post_meta( $post->ID, 'nsync-from', false );
+		self::$post_from = get_post_meta( $post->ID, 'nsync-from', true);
 		
-		if( !empty($from) ) {
-		
-			var_dump("from", $from );
-		
+		if( !empty(self::$post_from) ) {
+			$bloginfo = get_blog_details( array( 'blog_id' => self::$post_from['blog'] ) );
+			?>
+			<div class="misc-pub-section" id="shell-site-to-post">This post is currently being updated from <br />
+			<a href="<?php echo esc_url( $bloginfo->siteurl );?>"><?php echo $bloginfo->blogname; ?></a>
+			</div>
+			<?php
 		}
 	}
 	/* POST SIDE */
@@ -384,36 +388,38 @@ class Nsync {
 		global $post;
 		$post_to = get_option( 'nsync_post_to' );
 		
-		// change this line if you also want to effect pages. 
-		if( is_array( $post_to ) && $post->post_type == 'post' && !empty($post_to) ):
-		
-			$previous_to = get_post_meta( $post->ID, 'nsync-to', false );
+		if( empty(self::$post_from) ):
+			// change this line if you also want to effect pages. 
+			if( is_array( $post_to ) && $post->post_type == 'post' && !empty($post_to) ):
 			
-			foreach( $post_to as $blog_id ): 
-					
-					$blog = get_blog_details( array( 'blog_id' => $blog_id ) );
-					$blogs[] = $blog;
-					
-					if( isset( $previous_to[0][$blog_id] ) )
-						$site_diplay[] = $blog->blogname;
+				$previous_to = get_post_meta( $post->ID, 'nsync-to', false );
+				
+				foreach( $post_to as $blog_id ): 
 						
-			endforeach;
-			
-			?>
-			<div class="misc-pub-section" id="shell-site-to-post">
+						$blog = get_blog_details( array( 'blog_id' => $blog_id ) );
+						$blogs[] = $blog;
+						
+						if( isset( $previous_to[0][$blog_id] ) )
+							$site_diplay[] = $blog->blogname;
+							
+				endforeach;
 				
-				<label >Also publish to:</label>
-				
-				<span id="site-display"> <strong><?php echo ( is_array( $site_diplay ) ? implode( $site_diplay, ","): ""); ?></strong></span>
-				
-				<div id="site-to-post" class="hide-if-js">
-					<?php foreach( $blogs as $blog ): ?>
-					<label><input type="checkbox" name="nsync_post_to[]" value="<?php echo esc_attr($blog->blog_id); ?>" <?php echo checked( (bool)$previous_to[0][ $blog->blog_id] ); ?> alt="<?php echo esc_attr( $blog->blogname);?>" /> <?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small></label>
-					<?php endforeach; ?>
+				?>
+				<div class="misc-pub-section" id="shell-site-to-post">
+					
+					<label >Also publish to:</label>
+					
+					<span id="site-display"> <strong><?php echo ( is_array( $site_diplay ) ? implode( $site_diplay, ","): ""); ?></strong></span>
+					
+					<div id="site-to-post" class="hide-if-js">
+						<?php foreach( $blogs as $blog ): ?>
+						<label><input type="checkbox" name="nsync_post_to[]" value="<?php echo esc_attr($blog->blog_id); ?>" <?php echo checked( (bool)$previous_to[0][ $blog->blog_id] ); ?> alt="<?php echo esc_attr( $blog->blogname);?>" /> <?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small></label>
+						<?php endforeach; ?>
+					</div>
 				</div>
-			</div>
-			<?php 
-		    wp_nonce_field( 'nsync' , 'nsync_noncename' , false );
+				<?php 
+			    wp_nonce_field( 'nsync' , 'nsync_noncename' , false );
+			endif;
 		endif;
 	}
 
