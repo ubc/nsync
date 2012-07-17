@@ -409,7 +409,7 @@ class Nsync {
 					
 					<label >Also publish to:</label>
 					
-					<span id="site-display"> <strong><?php echo ( is_array( $site_diplay ) ? implode( $site_diplay, ","): ""); ?></strong></span>
+					<span id="site-display"> <?php echo ( is_array( $site_diplay ) ? '<strong>'. implode( $site_diplay, ",") . '</strong>': " (select a site)"); ?></span>
 					
 					<div id="site-to-post" class="hide-if-js">
 						<?php foreach( $blogs as $blog ): ?>

@@ -13,6 +13,7 @@ class Nsync_Posts {
 	static $replacement = array();
 	static $current_attach_data = array();
 	static $featured_image = false;
+	static $custom_fields = null;
 	
 	
 	public static function save_postdata( $post_id, $post ) {
@@ -76,8 +77,10 @@ class Nsync_Posts {
 					Nsync_Posts::replicate_categories( $nsync_options );
 					Nsync_Posts::set_post_status( $nsync_options, $post );
 					
-					$new_post_id = Nsync_Posts::insert_post( $nsync_options );			
 					
+					
+					$new_post_id = Nsync_Posts::insert_post( $nsync_options );			
+					Nsync_Posts::replicate_post_meta( $new_post_id  );
 					Nsync_Posts::replicate_attachments( $nsync_options, $new_post_id );
 					
 					
@@ -147,11 +150,14 @@ class Nsync_Posts {
 		$current_file 	= Nsync_Posts::path_to_file( $attachment_guid, self::$current_upload );
 		$new_file 		= Nsync_Posts::path_to_file( $attachment_guid, wp_upload_dir() );
 		
-		// copy the file
-		if( copy( $current_file, $new_file ) )
-			return $new_file;
-		else
-			return false;
+		if( file_exists($current_file) && is_file($current_file) ):
+			// copy the file
+			if( copy( $current_file, $new_file ) )
+				return $new_file;
+			else
+				return false;
+		endif;
+		return false;
 	}
 	public static function setup_taxonomies( $post_id ) {
 	
@@ -177,8 +183,7 @@ class Nsync_Posts {
 				$new_terms[$term->taxonomy][] = $term->name;
 			endif;
 		endforeach;
-		// var_dump($new_terms);
-		// var_dump($taxonomies);
+	
 		
 		self::$remote_post->tax_input = $new_terms;
 	}
@@ -262,8 +267,16 @@ class Nsync_Posts {
 	public static function setup_post_meta( $post_id ) {
 		// post meta should be duplicated. 
 		// $meta = get_post_meta( $post_id );
-		// var_dump($meta);
-	
+		
+		
+		$fields = get_post_custom( $post_id );
+		
+		$exclude = array( 'nsync-to', 'nsync-from' );
+		foreach( $fields as $key => $values ):
+				
+			if( $key[0] != '_' && !in_array( $key, $exclude ) )
+				self::$custom_fields[$key]  = $values;
+		endforeach;
 	}
 	
 	public static function set_post_status( $nsync_options, $post ) {
@@ -285,6 +298,22 @@ class Nsync_Posts {
 		else:
 			return wp_insert_post( self::$remote_post );
 		endif;
+	}
+	
+	public static function replicate_post_meta( $new_post_id ) {
+		
+		if( is_array(self::$custom_fields) ):
+		foreach( self::$custom_fields as $key => $values ):
+			// delete all the keys first.
+			delete_post_meta( $new_post_id, $key );
+			
+			// re-add them
+			foreach( $values as $value ):
+				update_post_meta( $new_post_id, $key, $value );
+			endforeach;
+		endforeach;
+		endif;
+	
 	}
 	
 	public static function replicate_attachments( $nsync_options, $new_post_id ) {
@@ -346,11 +375,24 @@ class Nsync_Posts {
 				endif;
 			endforeach;
 		endif;
-	
+		if(self::$replacement['current'])
+		
+		
+		
+		
+		// wp_delete_post( $postid, true );
 		// replace all the string
 		$update['ID'] = $new_post_id;
   		$update['post_content'] = str_replace ( self::$replacement['current'] , self::$replacement['remote'] , self::$remote_post->post_content  );
-		wp_update_post( $update );
+  		if( $update['post_content'] != self::$remote_post->post_content ):
+  			
+  			// lets erase the last revision because we are about to creat a new one. :$
+  			$revisions = wp_get_post_revisions( $new_post_id );
+  			$last_one = array_slice($revisions, 0, 3);
+  			wp_delete_post( $last_one->ID , true );
+			
+			wp_update_post( $update );
+		endif;
 		
 	}
 	
@@ -386,6 +428,59 @@ class Nsync_Posts {
 			$messages['post'][10] .= '. - Also updated draft on '. $end;
 		endif;
 		return $messages;
+	}
+	
+	
+	public static function trash_or_untrash_post( $post_id ) {
+		
+		if( self::$currently_publishing )
+			return;
+		
+		$post = wp_get_single_post($post_id, ARRAY_A);
+		
+		if( !$post )
+			return; 
+		
+		// lets see if we have any post that this is pushing to 
+		// where did we previously created or updated a post… used for making sure that we update the same post
+		$previous_to = get_post_meta( $post_id, 'nsync-to', true);
+		if( empty( $previous_to ) )
+			return;
+		
+		self::$currently_publishing = true;
+		self::$current_blog_id = get_current_blog_id();
+		
+		foreach( $previous_to as $blog_id => $to_post_id ):
+			switch_to_blog( $blog_id ); // save the post on the a different site
+				
+				if ( $post['post_status'] != 'trash' ):  
+					wp_trash_post( $to_post_id );
+				else: // lets untrash it
+					wp_untrash_post( $to_post_id );
+				endif;
+			
+			restore_current_blog(); // revet to the current blog 
+		endforeach;
+		
+	}
+	
+	public static function display_sync( $actions, $post ) {
+		
+		
+		self::$previous_to = get_post_meta( $post->ID, 'nsync-to', true );
+		
+		if( !empty( self::$previous_to )  ):
+			
+			foreach( self::$previous_to as $blog_id => $post_id ):
+				$bloginfo = get_blog_details( array( 'blog_id' => $blog_id ) );
+				$end[] = '<em>'.$bloginfo->blogname.'</em> <a href="'.esc_url( $bloginfo->siteurl ).'/?p='.$post_id.'">view post</a>';
+			endforeach;
+			
+			$end = " " . implode( ", ",  $end );
+	
+			$actions['sync'] = "Also posted to: ".$end;
+		endif;
+		return $actions;
 	}
 	
 }

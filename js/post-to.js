@@ -22,8 +22,12 @@ var Nsync_Post_To = {
 		jQuery("#site-to-post input:checked").each(function() {
 			html.push( jQuery(this).attr('alt') );
 		});
+		if( html.length == 0){
+			jQuery("#site-display").html( "(select a site)" );
+		} else {
+			jQuery("#site-display").html( "<strong>"+html.join(', ')+"</strong>" );
+		}
 		
-		jQuery("#site-display").html( "<strong>"+html.join(', ')+"</strong>" );
 	
 	}
 }
