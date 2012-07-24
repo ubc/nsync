@@ -7,6 +7,7 @@ class Nsync_Posts {
 	static $remote_post = null;
 	static $previous_to = null;
 	static $new_categories = array();
+	static $new_hierarchical_taxonomies = array();
 	static $attachments = null;
 	static $current_upload = array();
 	static $update_post = false;
@@ -20,14 +21,7 @@ class Nsync_Posts {
 	
 		// verify if this is an auto save routine. 
 		// If it is our form has not been submitted, so we dont want to do anything
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
-		  return;
-		
-		// verify this came from the our screen and with proper authorization,
-		// because save_post can be triggered at other times
-		if ( !wp_verify_nonce( $_POST['nsync_noncename'], 'nsync' ) )
-			return;
-	
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 			  return;
 		// Check permissions
 		if ( 'post' == $_POST['post_type'] && $post->post_type == 'post'  ){
 			if ( !current_user_can( 'edit_post', $post_id ) )
@@ -35,6 +29,13 @@ class Nsync_Posts {
 		} else {
 			return;
 		}
+		
+		// verify this came from the our screen and with proper authorization,
+		// because save_post can be triggered at other times
+		if ( !wp_verify_nonce( $_POST['nsync_noncename'], 'nsync' ) )
+			return;
+	
+		
 		
 		// don't go into an infinate loop
 		if( self::$currently_publishing )
@@ -75,6 +76,7 @@ class Nsync_Posts {
 					
 					Nsync_Posts::set_post_id( $blog_id );
 					Nsync_Posts::replicate_categories( $nsync_options );
+					Nsync_Posts::replicate_hierarchical_taxonomies( $nsync_options );
 					Nsync_Posts::set_post_status( $nsync_options, $post );
 					
 					
@@ -161,7 +163,9 @@ class Nsync_Posts {
 	}
 	public static function setup_taxonomies( $post_id ) {
 	
-		$taxonomies = array( 'category', 'post_tag' , 'post_format' );
+		$taxonomies = apply_filters( 'nsync_setup_taxonomies', array( 'category', 'post_tag' , 'post_format' ) );
+		
+		
 		/* $args= array(
 		  'public'   => true,
 		  '_builtin' => false,
@@ -171,15 +175,17 @@ class Nsync_Posts {
 		$tax = get_taxonomies('','names'); 
 		var_dump($tax); */
 		
-		$terms = wp_get_object_terms( $post_id, $taxonomies );
+		$terms = wp_get_object_terms( $post_id, $taxonomies  );
 		$new_terms = array();
 		
 		
 		foreach( $terms as $term ):
+			
 			if($term->taxonomy == 'category'):
 				self::$new_categories[] = $term->name; // categories neews to have 
+			elseif( is_taxonomy_hierarchical( $term->taxonomy ) ):
+				self::$new_hierarchical_taxonomies[$term->taxonomy][] = $term->name;
 			else:
-				
 				$new_terms[$term->taxonomy][] = $term->name;
 			endif;
 		endforeach;
@@ -264,6 +270,21 @@ class Nsync_Posts {
 	
 	}
 	
+	public static function replicate_hierarchical_taxonomies( $nsync_options ) {
+		
+		$new_taxonomy = array();
+					
+		foreach( self::$new_hierarchical_taxonomies as $taxonomy => $terms ):
+			foreach( $terms as $term ):
+				$new_term = wp_create_term( $term, $taxonomy );
+			$new_taxonomy[$taxonomy] = $new_term["term_id"];
+			endforeach;
+		endforeach;
+		
+		self::$remote_post->tax_input = array_merge( self::$remote_post->tax_input, $new_taxonomy );
+	
+	}
+	
 	public static function setup_post_meta( $post_id ) {
 		// post meta should be duplicated. 
 		// $meta = get_post_meta( $post_id );
@@ -290,6 +311,13 @@ class Nsync_Posts {
 	
 	public static function insert_post( $nsync_options ) {
 		
+		/*
+		echo "<pre>";
+		var_dump(self::$remote_post->tax_input);
+		echo "</pre>";
+		*/
+		
+		do_action('nsync_before_insert');
 		if( isset( $nsync_options['force_user'] ) &&  $nsync_options['force_user'] ):
 			if( user_can( self::$remote_post->post_author, 'publish_post' ) )
 				return wp_insert_post( self::$remote_post );
@@ -317,7 +345,6 @@ class Nsync_Posts {
 	}
 	
 	public static function replicate_attachments( $nsync_options, $new_post_id ) {
-		
 		
 		if( isset( $nsync_options['duplicate_files'] ) &&  $nsync_options['duplicate_files'] ):
 			// lets clean up the attacments first though
@@ -375,10 +402,7 @@ class Nsync_Posts {
 				endif;
 			endforeach;
 		endif;
-		if(self::$replacement['current'])
-		
-		
-		
+		// if( self::$replacement['current'] ) not sure if this was supposed to be deleted. 
 		
 		// wp_delete_post( $postid, true );
 		// replace all the string
@@ -389,7 +413,7 @@ class Nsync_Posts {
   			// lets erase the last revision because we are about to creat a new one. :$
   			$revisions = wp_get_post_revisions( $new_post_id );
   			$last_one = array_slice($revisions, 0, 3);
-  			wp_delete_post( $last_one->ID , true );
+  			wp_delete_post( $last_one->ID , true ); 
 			
 			wp_update_post( $update );
 		endif;

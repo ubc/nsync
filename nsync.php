@@ -3,7 +3,7 @@
 Plugin Name: nsync
 Plugin URI: 
 Description: 
-Version: 0.1
+Version: 0.9
 Author: 
 Author URI: 
 License: GPLv2 or later.

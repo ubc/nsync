@@ -387,23 +387,46 @@ class Nsync {
 	public static function user_select_site() {
 		global $post;
 		$post_to = get_option( 'nsync_post_to' );
+		$current_blog_id = get_current_blog_id();
+		
 		
 		if( empty(self::$post_from) ):
 			// change this line if you also want to effect pages. 
-			if( is_array( $post_to ) && $post->post_type == 'post' && !empty($post_to) ):
 			
+			if( is_array( $post_to ) && $post->post_type == 'post' && !empty($post_to) ):
+				
+				// double check if this  really the case
+				$new_post_to = array();
+				
 				$previous_to = get_post_meta( $post->ID, 'nsync-to', false );
 				
 				foreach( $post_to as $blog_id ): 
+						switch_to_blog( $blog_id );
+						$option =	get_option( 'nsync_options' );
 						
-						$blog = get_blog_details( array( 'blog_id' => $blog_id ) );
-						$blogs[] = $blog;
+						$skip = true;
+						if( in_array( $current_blog_id, $option['active'] ) ):
+							$new_post_to[] = $blog_id;
+							$skip = false;
+						endif;
 						
-						if( isset( $previous_to[0][$blog_id] ) )
-							$site_diplay[] = $blog->blogname;
+						restore_current_blog();
+						
+						if( !$skip ):
+							$blog = get_blog_details( array( 'blog_id' => $blog_id ) );
+							$blogs[] = $blog;
 							
+							if( isset( $previous_to[0][$blog_id] ) )
+								$site_diplay[] = $blog->blogname;
+						endif;	
 				endforeach;
+				$diff = array_diff ( $new_post_to , $post_to );
 				
+				if( ! empty( $diff ) ):
+					update_option( 'nsync_post_to', $new_post_to );
+				endif;
+				
+				if( is_array($blogs) ):
 				?>
 				<div class="misc-pub-section" id="shell-site-to-post">
 					
@@ -419,6 +442,7 @@ class Nsync {
 				</div>
 				<?php 
 			    wp_nonce_field( 'nsync' , 'nsync_noncename' , false );
+			    endif; // end of blogs check
 			endif;
 		endif;
 	}
