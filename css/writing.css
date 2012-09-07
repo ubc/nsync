@@ -1,0 +1,27 @@
+.user-blogs {
+	clear: left;
+	position: relative;
+	overflow: hidden;
+	margin-bottom: 15px;
+	border-bottom: 1px solid #EEE;
+}
+.user-blogs .display-name{
+	display: block;
+	margin-left: 34px;
+	font-size: 14px;
+	
+}
+.user-blogs img{
+	float: left;
+}
+.user-blogs-list label{
+	display: block;
+	margin-left: 34px;
+	float: left;
+	clear: both;
+	width: 250px;
+}
+.user-blogs-list a{
+	margin-left: 10px;
+	float: left;
+}
