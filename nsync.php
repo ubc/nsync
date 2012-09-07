@@ -1,10 +1,10 @@
 <?php
 /*
 Plugin Name: nsync
-Plugin URI: 
+Plugin URI: Allows you to push and pull content from 
 Description: 
-Version: 0.9
-Author: 
+Version: 0.9.1
+Author: ctlt
 Author URI: 
 License: GPLv2 or later.
 */

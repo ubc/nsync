@@ -6,10 +6,6 @@ class Nsync {
 	static $settings = array();
 	static $currently_publishing = false;
 	static $post_from = array();
-	public static function init() {
-		
-		
-	}
 	
 	public static function admin_init() {
 		//
@@ -20,7 +16,7 @@ class Nsync {
 			'nsync_options', // option name
 			array( 'Nsync', 'validate') // validation callback
 		);
-			
+		
 		add_settings_field(
 			'nsync_options', // id
 			'Network sites publishers', // setting title
@@ -29,12 +25,11 @@ class Nsync {
 			'remote_publishing' // settings section
 		);
 		
-		
-		
 		// register scipts and styles
 		wp_register_script( 'nsync-add-site', NSYNC_DIR_URL."/js/add-site.js", array( 'jquery', 'jquery-ui-autocomplete' ), '1.0', true );
 		wp_register_script( 'nsync-post-to', NSYNC_DIR_URL."/js/post-to.js", array( 'jquery', 'hoverIntent' ), '1.0', true );
 		wp_register_style( 'nsync-post-to', NSYNC_DIR_URL."/css/post-to.css", null, '1.0', 'screen' );
+		wp_register_style( 'nsync-post-writing', NSYNC_DIR_URL."/css/writing.css", null, '1.0', 'screen' );
 	}
 	/* SETTINGS */ 
 	public static function add_network_sites() {
@@ -89,43 +84,79 @@ class Nsync {
 					if( $current_blog_id != $blog->userblog_id ): ?>
 					<label> <input name="nsync_options[active][]" type="checkbox" value="<?php echo esc_attr( $blog->userblog_id ); ?>" /> <?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small></label><br />
 					<?php 
-					$showen[] = $blog->userblog_id;  
+					$showen[] = $blog->userblog_id; 
 					endif;
 				endforeach;
 			endif; 
 		endif; 
 		
 		// all the users sites 
-			$args = array( 'who' => 'authors' );
-		unset($blog);
+		$args = array( 'who' => 'all' );
+			unset($blog);
 		$all_blogs = null;
-		
+		$showen[] = $current_blog_id; 
 		$users = get_users( $args );
 
 		
 		// limit 
 		(int)$pagenum = ( isset( $_GET['num'] ) ? $_GET['num'] : 1 );
+		
 		$per_page = 10;
-
+		$total_numer_of_users = count($users);
+		
 		$users = array_slice( $users, intval( ( $pagenum - 1 ) * $per_page ), intval( $per_page ) );
+		
+		?>
+		<p style="margin:20px 0 0;">List of sites by current users</p>
+		<?php
+		
 		// todo: this might exlode if there are many users. like on a site that has all the 10 authors
 		foreach( $users as $user ):
 			
 			if( $current_user->id != $user->ID ): // don't add the current user blogs they are listed above anyways
+				if( !$user->deleted ):
 				
-				$user_blogs = get_blogs_of_user( $user->ID );
-				if( is_array( $user_blogs ) ):
+					$user_blogs = get_blogs_of_user( $user->ID );
+					if( is_array( $user_blogs ) ):
+							
+							
+						?>
+						<div class="user-blogs">
+							<?php echo get_avatar( $user->email, 24 ); ?> <span class="display-name"><?php echo $user->display_name; ?></span>
+							
+							<div class="user-blogs-list">
+							<?php 
+							foreach( $user_blogs as $blog ):
+								
+								if( !in_array( $blog->userblog_id, $showen ) ):
+								
+									$all_blogs[ $blog->userblog_id ] = $blog; // make the all_blogs unique
+								
+								
+								?>
+								<label> 
+									<input name="nsync_options[active][]" type="checkbox" value="<?php echo esc_attr( $blog->userblog_id ); ?>" /> 
+									<?php echo $blog->blogname;?>
+								</label> <a href="<?php echo $blog->siteurl;?>" target="_blank"><small><?php echo $blog->siteurl;?></small></a>
+								<br />
+								<?php
+								endif;
+							endforeach;
+							?>
+							</div>
+						</div>
+						<?php
+					endif; // has any blogs?
 					
-					foreach( $user_blogs as $blog ):
-						if( !in_array( $blog->userblog_id, $showen ) && ( $current_blog_id != $blog->userblog_id ) )
-						$all_blogs[ $blog->userblog_id ] = $blog; // make the all_blogs unique
-					endforeach;
-				endif;
+				endif; // deleted?
 			endif;
 		endforeach;
+		
+		
+		/*
 		if( is_array( $all_blogs ) ):?>
 		<p style="margin:20px 0 0;">Select a site from the current site authors.</p>
-		<?php
+		
 		foreach( $all_blogs as $blog ): ?>
 			<label> 
 				<input name="nsync_options[active][]" type="checkbox" value="<?php echo esc_attr( $blog->userblog_id ); ?>" /> 
@@ -133,8 +164,13 @@ class Nsync {
 			</label><br />
 			<?php 
 		endforeach;
-		endif;
 		
+		endif;
+		*/
+		
+		?>
+		<p>Pages :<?php Nsync::paginate( $total_numer_of_users, $per_page , $pagenum , admin_url( 'options-writing.php' ) ); ?></p>
+		<?php
 		
 		if( current_user_can('manage_sites') ):
 			
@@ -187,6 +223,22 @@ class Nsync {
 			<?php
 		endif;
 
+	}
+	
+	public static function paginate( $total, $per_page, $current_page = 1 , $url_start ) {
+		
+		$total_pages = ceil( $total / $per_page );
+		for( $page = 1; $page <= $total_pages ; $page++ ) {
+			if($current_page == $page)
+				$list_pages[] = $page;	
+			else
+				$list_pages[] = '<a href="'.$url_start.'?num='.$page.'">'.$page.'</a>';
+			
+		}
+		
+		echo implode(" ", $list_pages );
+		
+	
 	}
 	
 	public static function validate( $input ) {
@@ -271,7 +323,10 @@ class Nsync {
 		if( current_user_can( 'manage_sites' ) ):
 			wp_enqueue_script( 'jquery-ui-autocomplete' ); 
 			wp_enqueue_script( 'nsync-add-site' );
+			
 		endif;
+		
+		wp_enqueue_style( 'nsync-post-writing' );
 	}
 	
 	public static function ajax_lookup_site() {
