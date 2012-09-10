@@ -230,17 +230,12 @@ class Nsync {
 			if($current_page == $page)
 				$list_pages[] = $page;	
 			else
-				$list_pages[] = '<a href="'.$url_start.'?num='.$page.'">'.$page.'</a>';
-			
+				$list_pages[] = '<a href="'.$url_start.'?num='.$page.'">'.$page.'</a>';	
 		}
-		
 		echo implode(" ", $list_pages );
-		
-	
 	}
 	
 	public static function validate( $input ) {
-		
 		
 		$current_blog_id = get_current_blog_id();
 		
@@ -248,7 +243,6 @@ class Nsync {
 			$active = array_unique( $input['active'] );
 		else
 			$active = array();
-		
 		
 		
 		if( is_array( self::$settings['active'] ) && !empty( $active ) ):
@@ -267,6 +261,22 @@ class Nsync {
 			$to_add 	= $active;
 		endif;
 		
+		// remove sites
+		Nsync::remove_sites( $to_remove );
+		
+		// add new sites 
+		Nsync::add_sites( $to_add );
+		
+		
+		$input['active'] = $active;
+		
+		self::$settings = $input;
+		
+		return $input;
+		
+	}
+	
+	public static function remove_sites( $to_remove ) {
 		// remove sites that you don't want any more.
 		if( !empty( $to_remove ) ):
 		
@@ -289,7 +299,9 @@ class Nsync {
 			endforeach;
 		endif;
 		
-		// add new sites 
+	}
+	
+	public static function add_sites( $to_add ) {
 		if( !empty( $to_add ) ):
 			foreach( $to_add as $blog_id ):
 				if( $blog_id != $current_blog_id ): // never add yourself to the its own blog to the list of blogs 	
@@ -307,14 +319,6 @@ class Nsync {
 				endif;
 			endforeach;
 		endif;
-		
-		
-		$input['active'] = $active;
-		
-		self::$settings = $input;
-		
-		return $input;
-		
 	}
 	
 	public static function writing_script_n_style() {
@@ -416,19 +420,56 @@ class Nsync {
 		return $wpdb->get_results( $query, ARRAY_A );
 	}
 	
-	public static function post_from_site() {
+	// this displays the if the post if coming from somewhere else. 
+	public static function post_display_from() {
 		global $post;
-		self::$post_from = get_post_meta( $post->ID, 'nsync-from', true);
+		self::$post_from = get_post_meta( $post->ID, '_nsync-from', true);
+		
+		if( defined( 'NSYNC_PUSH_BASENAME') )
+			Nsync_Push::$post_from = self::$post_from;
 		
 		if( !empty(self::$post_from) ) {
-			$bloginfo = get_blog_details( array( 'blog_id' => self::$post_from['blog'] ) );
-			?>
-			<div class="misc-pub-section" id="shell-site-to-post">This post is currently being updated from <br />
-			<a href="<?php echo esc_url( $bloginfo->siteurl );?>"><?php echo $bloginfo->blogname; ?></a>
+			$bloginfo = get_blog_details( array( 'blog_id' => self::$post_from['blog'] ) ); 
+			
+			$prefix = ( Nsync::allow_to_publish_to_me( self::$post_from['blog'] )  ? 'Post updated from': 'Originally posted on' ); ?>
+			
+			<div class="misc-pub-section" id="shell-site-to-post"><?php echo $prefix ?>:
+				<em><?php echo $bloginfo->blogname; ?></em> <a href="<?php echo esc_url( $bloginfo->siteurl ); ?>'/?p=<?php self::$post_from['post_id']; ?>">view post</a>
 			</div>
 			<?php
 		}
 	}
+	
+	public static function posts_display_sync( $actions, $post ) {
+		
+		self::$post_from = get_post_meta( $post->ID, '_nsync-from', true );
+		
+		if( !empty( self::$post_from )  ):
+			
+			$bloginfo = get_blog_details( array( 'blog_id' => self::$post_from['blog'] ) );
+			
+			$end = '<em>'.$bloginfo->blogname.'</em> <a href="'.esc_url( $bloginfo->siteurl ).'/?p='.self::$post_from['post_id'].'">view post</a>';
+			
+			$prefix = ( Nsync::allow_to_publish_to_me( self::$post_from['blog'] )  ? 'Post updated from': 'Originally posted on' );
+			
+			$actions['sync'] = $prefix.": ".$end;
+			
+		endif;
+		
+		return $actions;
+	}
+	
+	public static function allow_to_publish_to_me( $blog_id ) {
+	
+		if( !empty( self::$settings) ):
+			
+			if( is_array(self::$settings['active']) && in_array($blog_id, self::$settings['active'] ) )
+				return true;
+		endif;
+		
+		return false;
+	}
+
 }
 
 
