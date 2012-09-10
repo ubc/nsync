@@ -28,6 +28,8 @@ class Nsync {
 		// register scipts and styles
 		wp_register_script( 'nsync-add-site', NSYNC_DIR_URL."/js/add-site.js", array( 'jquery', 'jquery-ui-autocomplete' ), '1.0', true );
 		wp_register_style( 'nsync-post-writing', NSYNC_DIR_URL."/css/writing.css", null, '1.0', 'screen' );
+		
+		
 	}
 	/* SETTINGS */ 
 	public static function add_network_sites() {
@@ -36,6 +38,7 @@ class Nsync {
 		$current_blog_id = get_current_blog_id();
 			
 		$active = self::$settings['active'];
+		
 		?>
 		<div id="select-site">
 		<?php
@@ -262,21 +265,22 @@ class Nsync {
 		endif;
 		
 		// remove sites
-		Nsync::remove_sites( $to_remove );
+		Nsync::remove_sites( $to_remove, $current_blog_id );
 		
 		// add new sites 
-		Nsync::add_sites( $to_add );
+		Nsync::add_sites( $to_add, $current_blog_id );
 		
 		
 		$input['active'] = $active;
 		
 		self::$settings = $input;
 		
+		
 		return $input;
 		
 	}
 	
-	public static function remove_sites( $to_remove ) {
+	public static function remove_sites( $to_remove, $current_blog_id ) {
 		// remove sites that you don't want any more.
 		if( !empty( $to_remove ) ):
 		
@@ -290,6 +294,7 @@ class Nsync {
 				if( is_array($post_to) ):
 					// there is nothing to remove if we don't have the $post_to set as an array
 					$post_to = array_diff( $post_to , array( $current_blog_id ) );
+					$post_to = array_unique($post_to);
 					update_option( 'nsync_post_to', $post_to );
 				
 				endif;
@@ -301,7 +306,9 @@ class Nsync {
 		
 	}
 	
-	public static function add_sites( $to_add ) {
+	public static function add_sites( $to_add , $current_blog_id) {
+	
+		
 		if( !empty( $to_add ) ):
 			foreach( $to_add as $blog_id ):
 				if( $blog_id != $current_blog_id ): // never add yourself to the its own blog to the list of blogs 	
@@ -311,13 +318,15 @@ class Nsync {
 					if( !is_array($post_to) )
 						$post_to = array();
 					$post_to[] = $current_blog_id;
-
+					$post_to = array_unique($post_to);
 					update_option( 'nsync_post_to', $post_to );
 					
 					restore_current_blog();
 					unset( $post_to ); 
 				endif;
 			endforeach;
+			
+			
 		endif;
 	}
 	
