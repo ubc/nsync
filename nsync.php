@@ -3,7 +3,7 @@
 Plugin Name: Nsync
 Plugin URI: http://github.com/ubc/nsync
 Description: Allows you to setup what other sites can also publish posts to your site.
-Version: 1
+Version: 1.0.1
 Author: ctlt
 Author URI: 
 License: GPLv2 or later.

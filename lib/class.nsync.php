@@ -183,6 +183,7 @@ class Nsync {
 				<small>Only available to Super Admins</small>
 			</p>
 			
+		<?php endif; ?>
 			
 			<p><label>Added Posts will appear in this category by default: <br />
 			
@@ -222,7 +223,7 @@ class Nsync {
 			<label><input type="checkbox" name="nsync_options[force_user]" value="1" <?php checked( self::$settings['force_user'] ); ?> /> Only Authors, Editor and Administrators are able to remotly publish to this site.</label>
 			</p>
 			<?php
-		endif;
+		
 
 	}
 	
