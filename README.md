@@ -8,6 +8,9 @@ checkout out at http://github.com/ubc/nsync-push
 This plugin is meant to be enabled on a site by site basis. 
 
 # change log #
+1.0.1
+* Administrators should be able to say what the default category, post status, copy files,  of nsync-ed posts should be. 
+
 1.0
 * split it into 2 plugins, see http://github.com/ubc/nsync-push
 
