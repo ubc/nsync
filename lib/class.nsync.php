@@ -6,6 +6,7 @@ class Nsync {
 	static $settings = array();
 	static $currently_publishing = false;
 	static $post_from = array();
+	static $default_source_template = "source: {post permalink}";
 	
 	public static function admin_init() {
 		//
@@ -36,8 +37,11 @@ class Nsync {
 		global $current_user;
 		
 		$current_blog_id = get_current_blog_id();
-			
-		$active = self::$settings['active'];
+		
+		$active = null;
+		if (isset(self::$settings['active'])) {
+			$active = self::$settings['active'];
+		} 
 		
 		?>
 		<div id="select-site">
@@ -55,7 +59,7 @@ class Nsync {
 				$spam	= ( $details->spam ? '<span> spam</span> ': '' );
 				<?php echo $archived; ?><?php echo $spam; ?><?php echo $mature; ?>
 				*/
-				if( ( ! $blog->archived && ! $blog->spam && ! $blog->deleted ) && $active_site_id != $current_blog_id ): ?>
+				if( ( ! $details->archived && ! $details->spam && ! $details->deleted ) && $active_site_id != $current_blog_id ): ?>
 					<label>
 						<input name='nsync_options[active][]' type='checkbox' checked="checked" value='<?php echo esc_attr( $active_site_id ); ?>' />
 						<?php echo $details->blogname;?> <small><?php echo $details->siteurl;?> </small>
@@ -65,7 +69,7 @@ class Nsync {
 			endforeach;
 			
 		else:
-		?><br />
+		?>
 		<p>There are currently no external sites that are able to publish content on your site.</p>
 		<?php
 		endif;
@@ -73,8 +77,8 @@ class Nsync {
 		</div>
 		<?php 
 		
-		if( $current_user->id ):
-			$user_blogs = get_blogs_of_user( $current_user->id );
+		if( $current_user->ID ):
+			$user_blogs = get_blogs_of_user( $current_user->ID );
 			if( is_array( $user_blogs ) ): 
 				?>
 				<p style="margin:20px 0 0;">Select the from <em>your current sites</em> that want to enabled the external publishing from.</p>
@@ -114,7 +118,7 @@ class Nsync {
 		// todo: this might exlode if there are many users. like on a site that has all the 10 authors
 		foreach( $users as $user ):
 			
-			if( $current_user->id != $user->ID ): // don't add the current user blogs they are listed above anyways
+			if( $current_user->ID != $user->ID ): // don't add the current user blogs they are listed above anyways
 				if( !$user->deleted ):
 				
 					$user_blogs = get_blogs_of_user( $user->ID );
@@ -216,15 +220,33 @@ class Nsync {
 			
 			?>
 			<p>
-			<label><input type="checkbox" name="nsync_options[duplicate_files]" value="1" <?php checked( self::$settings['duplicate_files'] ); ?> /> Copy files that are attached to the post to this site.</label>
+			<label><input type="checkbox" name="nsync_options[duplicate_files]" value="1" <?php checked( (isset(self::$settings['duplicate_files']) && self::$settings['duplicate_files']) ); ?> /> Copy files that are attached to the post to this site.</label>
 			</p>
 			
 			<p>
-			<label><input type="checkbox" name="nsync_options[force_user]" value="1" <?php checked( self::$settings['force_user'] ); ?> /> Only Authors, Editor and Administrators are able to remotly publish to this site.</label>
+			<label><input type="checkbox" name="nsync_options[force_user]" value="1" <?php checked( (isset(self::$settings['force_user']) && self::$settings['force_user'] ) ); ?> /> Only Authors, Editor and Administrators are able to remotly publish to this site.</label>
+			</p>
+				
+			<p>
+			<label><input type="checkbox" name="nsync_options[include_new_cats_tags]" value="1" <?php checked( (isset(self::$settings['include_new_cats_tags']) && self::$settings['include_new_cats_tags'] ) ); ?> /> Include all of the source's own categories.</label>
+			</p>
+					
+			<p>
+			<label><input type="checkbox" name="nsync_options[link_to_source]" value="1" <?php checked( (isset(self::$settings['link_to_source']) && self::$settings['link_to_source'] ) ); ?> /> Make post title permalink go to original source.</label>
+			</p>
+			
+			<p>
+			<label><input type="checkbox" name="nsync_options[source_before]" value="1" <?php checked( (isset(self::$settings['source_before']) && self::$settings['source_before'] ) ); ?> /> Show source of post before displaying content.</label>
+			</p>
+			
+			<p>
+			<label><input type="checkbox" name="nsync_options[source_after]" value="1" <?php checked( (isset(self::$settings['source_after']) && self::$settings['source_after'] ) ); ?> /> Show source of post after displaying content.</label>
+			</p>
+			
+			<p>
+			<label><input type="text" name="nsync_options[source_template]" value="<?php echo (isset(self::$settings['source_template'])? self::$settings['source_template'] : Nsync::$default_source_template); ?>" <?php checked( (isset(self::$settings['source_template']) && self::$settings['source_template'] ) ); ?> /> Template used to display source eg. source: {post permalink}</label>
 			</p>
 			<?php
-		
-
 	}
 	
 	public static function paginate( $total, $per_page, $current_page = 1 , $url_start ) {
@@ -240,15 +262,17 @@ class Nsync {
 	}
 	
 	public static function validate( $input ) {
+		$to_add = null;
 		
 		$current_blog_id = get_current_blog_id();
 		
-		if( is_array( $input['active'] ) )
+		if(isset($input['active']) && is_array( $input['active'] ) )
 			$active = array_unique( $input['active'] );
 		else
 			$active = array();
 		
-		
+		$to_remove = array();
+		$to_add = array();
 		if( is_array( self::$settings['active'] ) && !empty( $active ) ):
 			$intersect 	= array_intersect( self::$settings['active'], $active );
 			
@@ -266,10 +290,14 @@ class Nsync {
 		endif;
 		
 		// remove sites
-		Nsync::remove_sites( $to_remove, $current_blog_id );
+		if (!empty($to_remove)) {
+			Nsync::remove_sites( $to_remove, $current_blog_id );
+		}
 		
 		// add new sites 
-		Nsync::add_sites( $to_add, $current_blog_id );
+		if (!empty($to_add)) {
+			Nsync::add_sites( $to_add, $current_blog_id );
+		}
 		
 		
 		$input['active'] = $active;
@@ -444,7 +472,7 @@ class Nsync {
 			$prefix = ( Nsync::allow_to_publish_to_me( self::$post_from['blog'] )  ? 'Post updated from': 'Originally posted on' ); ?>
 			
 			<div class="misc-pub-section" id="shell-site-to-post"><?php echo $prefix ?>:
-				<em><?php echo $bloginfo->blogname; ?></em> <a href="<?php echo esc_url( $bloginfo->siteurl ); ?>'/?p=<?php self::$post_from['post_id']; ?>">view post</a>
+				<em><?php echo $bloginfo->blogname; ?></em> <a href="<?php echo esc_url( $bloginfo->siteurl ) . '/?p='. self::$post_from['post_id']; ?>">view post</a>
 			</div>
 			<?php
 		}
@@ -481,26 +509,3 @@ class Nsync {
 	}
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

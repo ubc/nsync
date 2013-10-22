@@ -3,7 +3,7 @@
 Plugin Name: Nsync
 Plugin URI: http://github.com/ubc/nsync
 Description: Allows you to setup what other sites can also publish posts to your site.
-Version: 1.0.1
+Version: 1.1
 Author: ctlt
 Author URI: 
 License: GPLv2 or later.
@@ -37,6 +37,6 @@ register_uninstall_hook( __FILE__, 'nsync_uninstall');
 function nsync_uninstall() {
 	// lets uninstall the plugin
 	$to_remove = get_option( 'nsync_options' );
-	Nsync::remove_sites( $to_remove['active'] );
+	Nsync::remove_sites( $to_remove['active'], get_current_blog_id() );
 	delete_option( 'nsync_options' );
 }
