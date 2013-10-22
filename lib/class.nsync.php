@@ -6,7 +6,7 @@ class Nsync {
 	static $settings = array();
 	static $currently_publishing = false;
 	static $post_from = array();
-	static $default_source_template = "source: {post permalink}";
+	static $default_source_template = "source: <a href='{post permalink}'>{post title}</a>";
 	
 	public static function admin_init() {
 		//
@@ -228,7 +228,7 @@ class Nsync {
 			</p>
 				
 			<p>
-			<label><input type="checkbox" name="nsync_options[include_new_cats_tags]" value="1" <?php checked( (isset(self::$settings['include_new_cats_tags']) && self::$settings['include_new_cats_tags'] ) ); ?> /> Include all of the source's own categories.</label>
+			<label><input type="checkbox" name="nsync_options[include_new_cats_tags]" value="1" <?php checked( (isset(self::$settings['include_new_cats_tags']) && self::$settings['include_new_cats_tags'] ) ); ?> /> Restrict source post's categories to ones already on your blog.</label>
 			</p>
 					
 			<p>
