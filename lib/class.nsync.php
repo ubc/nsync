@@ -20,7 +20,7 @@ class Nsync {
 		
 		add_settings_field(
 			'nsync_options', // id
-			'Network sites publishers', // setting title
+			'Network Sites Publishers', // setting title
 			array( 'Nsync', 'add_network_sites'), // display callback
 			'writing', // settings page
 			'remote_publishing' // settings section
@@ -244,7 +244,7 @@ class Nsync {
 			</p>
 			
 			<p>
-			<label><input type="text" name="nsync_options[source_template]" value="<?php echo (isset(self::$settings['source_template'])? self::$settings['source_template'] : Nsync::$default_source_template); ?>" <?php checked( (isset(self::$settings['source_template']) && self::$settings['source_template'] ) ); ?> /> Template used to display source eg. source: {post permalink}</label>
+			<label><input type="text" name="nsync_options[source_template]" value="<?php echo (isset(self::$settings['source_template'])? self::$settings['source_template'] : Nsync::$default_source_template); ?>" <?php checked( (isset(self::$settings['source_template']) && self::$settings['source_template'] ) ); ?> class="regular-text" /> Template used to display source.  Valid tags include: <em>{site permalink}, {site name}, {post permalink}, {post date}, {post title}, {post author}</em></label>
 			</p>
 			<?php
 	}
