@@ -2,14 +2,14 @@
 
 
 class Nsync {
-	// 
+	
 	static $settings = array();
 	static $currently_publishing = false;
 	static $post_from = array();
 	static $default_source_template = "source: <a href='{post permalink}'>{post title}</a>";
 	
 	public static function admin_init() {
-		//
+		
 		self::$settings = get_option( 'nsync_options' );
 		
 		register_setting(
@@ -34,6 +34,7 @@ class Nsync {
 	}
 	/* SETTINGS */ 
 	public static function add_network_sites() {
+		
 		global $current_user;
 		
 		$current_blog_id = get_current_blog_id();
@@ -43,65 +44,187 @@ class Nsync {
 			$active = self::$settings['active'];
 		} 
 		
-		?>
-		<div id="select-site">
-		<?php
-		if( is_array($active) ):
-			?>
-				<p>Selected sites are able to publish content.</p>
-				<?php
-			foreach( $active as $active_site_id ):
+		echo "<div id='nsync-nav'><div id='current'> <p>Current</p> </div> <div id='add'> <p>Add Sites</p> </div><div id='general'> <p>General</p> </div></div>";
+
+		echo "<div class='current nsync'>";
+	   	//add current publishing sites module
+		echo self::createPublishingList( $active );
+		echo "</div>";
+
+		echo "<div class='add nsync'>";
+	    //add current publishing sites module
+		echo self::createExternalPublishing( $current_user );
+
+		//add seachbox
+		echo self::createSearchBox();
+
+	    //add user list
+		echo self::createUserList( $current_user );
+		echo "</div>";
+
+		echo "<div class='general nsync'>";
+		//create category module
+		echo self::createPostCategory();
+		
+		//add post settings
+		echo self::createPostInformation();
+		echo "</div>";
+		
+	}
+
+
+	public static function createPostCategory(  ) {
+
+		$html = '';
+
+		$drop_down = array (
+						"hierarchical" => 1,
+						"name" => "nsync_options[category]",
+						"selected" => self::$settings['category'],
+						'echo' => 0,
+						'show_option_none' => 'None' 
+					);
+		$html .= '<p><label>Select Category: ' . wp_dropdown_categories( $drop_down ) . '</label></p>';
+		$html .= '<p><em> This Category is added to the pushed posts by default.</em></p>';
+
+		return self::wrapModule ( "Category for Nsync", $html );
+	}
+
+
+	public static function createPostInformation(  ) {
+
+		$post_settings = [ 
+			'duplicate_files' => "Copy files that are attached to the post to this site.",
+			'force_user' => "Only Authors, Editor and Administrators are able to remotely publish to this site.",
+			'include_new_cats_tags' => "Restrict source post's categories to ones already on your blog.",
+			'link_to_source' => "Make post title permalink go to original source.",
+			'source_before' => "Show source of post before displaying content.",
+			'source_after' => "Show source of post after displaying content."	
+		];	
+
+		$post_status_setting = [
+			'0' => 'Inherit from the post',
+			'draft' => 'Draft',
+			'publish' => 'Publish',
+			'pending' => 'Pending' 
+		];
+
+		$html .= '<p><label>Select the Post Status
+				  <select name="nsync_options[post_status]">';
+
+		// Let the user check the post
+		// todo: add support for the EditFlow plugin
+		$post_status = self::$settings['post_status'];
+
+		foreach ($post_status_setting as $value => $text) {
+			$selected = selected( $post_status, $value, 0 );
+			$html .= '<option value="' . $value . '" ' . $selected  . '>' . $text . '</option>';
+		
+		}
+
+		$html .= '</select></label></p>';			
+			
+				// force check to only users that are also members of this blog. 
+		foreach ($post_settings as $input => $msg) {
+
+			$checked =  checked( ( isset( self::$settings[ $input ] ) && self::$settings[ $input ]), true, 0);
+			$html .=	'<p>
+							<label>
+								<input type="checkbox" name="nsync_options[' . $input . ']" value="1" ' . $checked . ' /> 
+								' . $msg . '
+							</label>
+					    </p>';
+		}		
+		
+		$checked =  ( isset( self::$settings[ 'upload_dir' ] ) ? self::$settings[ 'upload_dir' ] : 'uploads');
+		$html .= "<br><div class='upload-dir'><label>Enter directory for upload:  <input type='textbox' name='nsync_options[upload_dir]' value='" . $checked  . "' </label><br><p><em> Folder must have 0777 permissions to copy over media</em></p></div>";
+
+		$value  = (isset(self::$settings['source_template'])? self::$settings['source_template'] : Nsync::$default_source_template); 
+		$checked = checked( (isset(self::$settings['source_template']) && self::$settings['source_template'] ), true, 0);
+		$html .= '<p><br>
+					<label> 
+						Template used to display source: 
+					  	<input type="text" name="nsync_options[source_template]" value="' . $value . '" ' . $checked .' class="regular-text" /> 
+				  	</label>
+				  </p>';
+
+		$html .= '<p>
+				  	<em>Valid tags include: {site permalink}, {site name}, {post permalink}, {post date}, {post title}, {post author}</em>
+				 </p>
+				 </div>';
+
+		return self::wrapModule ( "Post Information", $html );
+	}
+
+	public static function createExternalPublishing( $current_user ) {
+
+		$html  = ''; 
+
+		if ( $current_user->ID ) {
+			$user_blogs = get_blogs_of_user( $current_user->ID );
+
+			if ( is_array( $user_blogs ) ) { 
+
+			   $html  .=  "<p class='list-title'>Select from user " . $current_user->user_nicename . " current sites, that you want to enabled the external publishing from.</p> ";
+				
+				foreach ( $user_blogs as $blog ) {
+					
+					if ( $current_blog_id != $blog->userblog_id ) {
+						$html  .= '<div class="publishing-sites">
+										<label> 
+											<input name="nsync_options[active][]" type="checkbox" value="' . esc_attr( $blog->userblog_id ) . '" /> ' . $blog->blogname . 
+										'</label> 
+										<p><small>' . $blog->siteurl . '</small></p>
+									</div>';
+						$showen[] = $blog->userblog_id; 
+					}
+				}
+			} 
+		} 
+
+		return self::wrapModule ( "Avaliable Publishing Sites", $html );
+	}
+
+	public static function createPublishingList( $active ) {
+
+		$html  = ''; 
+		
+		if ( is_array($active) && !empty($active)) {
+
+			$html .= '<p class="list-title">Selected sites are able to publish content.</p>';
+	
+			foreach ( $active as $active_site_id ) {
+
 				$details = get_blog_details( array( 'blog_id' => $active_site_id ) );
 				
-				/*
-				$archived = ( $details->archived ? '<span> archived</span> ': '' ); 
-				$mature = ( $details->mature ? '<span> mature</span> ': '' );
-				$spam	= ( $details->spam ? '<span> spam</span> ': '' );
-				<?php echo $archived; ?><?php echo $spam; ?><?php echo $mature; ?>
-				*/
-				if( ( ! $details->archived && ! $details->spam && ! $details->deleted ) && $active_site_id != $current_blog_id ): ?>
-					<label>
-						<input name='nsync_options[active][]' type='checkbox' checked="checked" value='<?php echo esc_attr( $active_site_id ); ?>' />
-						<?php echo $details->blogname;?> <small><?php echo $details->siteurl;?> </small>
-					</label><br />
-					<?php
-				endif;
-			endforeach;
-			
-		else:
-		?>
-		<p>There are currently no external sites that are able to publish content on your site.</p>
-		<?php
-		endif;
-		?>
-		</div>
-		<?php 
-		
-		if( $current_user->ID ):
-			$user_blogs = get_blogs_of_user( $current_user->ID );
-			if( is_array( $user_blogs ) ): 
-				?>
-				<p style="margin:20px 0 0;">Select the from <em>your current sites</em> that want to enabled the external publishing from.</p>
-				<?php
-				
-				foreach( $user_blogs as $blog ): 
+				if ( ( ! $details->archived && ! $details->spam && ! $details->deleted ) && $active_site_id != $current_blog_id ) {
 					
-					if( $current_blog_id != $blog->userblog_id ): ?>
-					<label> <input name="nsync_options[active][]" type="checkbox" value="<?php echo esc_attr( $blog->userblog_id ); ?>" /> <?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small></label><br />
-					<?php 
-					$showen[] = $blog->userblog_id; 
-					endif;
-				endforeach;
-			endif; 
-		endif; 
-		
-		// all the users sites 
+					$html .= '<div class="publishing-sites">
+							  	<label>
+									<input name="nsync_options[active][]" type="checkbox" checked="checked" value="' . esc_attr( $active_site_id ) . '" />'
+							     . $details->blogname . ' <small>' . $details->siteurl . '</small>
+								</label>
+							 </div>';
+				}
+			}
+
+		} else {
+	
+			$html .= '<p><em>There are currently no external sites that are able to publish content on your site.</em></p><br>';
+		}
+
+		return self::wrapModule ( "Current Publishing Sites", $html, 'select-site' );
+	}
+
+	public static function createUserList( $current_user ) {
+
+	    // all the users sites 
 		$args = array( 'who' => 'all' );
-			unset($blog);
+		unset($blog);
 		$all_blogs = null;
 		$showen[] = $current_blog_id; 
 		$users = get_users( $args );
-
+		$html = '';
 		
 		// limit 
 		(int)$pagenum = ( isset( $_GET['num'] ) ? $_GET['num'] : 1 );
@@ -110,155 +233,96 @@ class Nsync {
 		$total_numer_of_users = count($users);
 		
 		$users = array_slice( $users, intval( ( $pagenum - 1 ) * $per_page ), intval( $per_page ) );
-		
-		?>
-		<p style="margin:20px 0 0;">List of sites by current users</p>
-		<?php
-		
-		// todo: this might exlode if there are many users. like on a site that has all the 10 authors
-		foreach( $users as $user ):
-			
-			if( $current_user->ID != $user->ID ): // don't add the current user blogs they are listed above anyways
-				if( !$user->deleted ):
+
+		if (sizeof($users) > 1 || $current_user->ID != $users[0]->ID) { 
+
+			// todo: this might exlode if there are many users. like on a site that has all the 10 authors
+			foreach ( $users as $user ) {
 				
+				if ( $current_user->ID != $user->ID && !$user->deleted ) { // don't add the current user blogs they are listed above anyways
+
 					$user_blogs = get_blogs_of_user( $user->ID );
-					if( is_array( $user_blogs ) ):
+	
+						if ( is_array( $user_blogs ) ) {
+
+							$avatar_image = get_avatar( $user->email, 24 );	
+
+							$html .= '<div class="user-blogs">' . $avatar_image .
+									 '<span class="display-name">' . $user->display_name . '</span>';
+								
+							$html .= '<div class="user-blogs-list">';
+						
+								foreach ( $user_blogs as $blog ) {
+									
+									if ( !in_array( $blog->userblog_id, $showen ) ) {
+									
+										$all_blogs[ $blog->userblog_id ] = $blog; // make the all_blogs unique
+			
+										$html .= '<div class="user-blogs-item">
+														<label> 
+															<input name="nsync_options[active][]" type="checkbox" value="' . esc_attr( $blog->userblog_id ) .'" /> 
+															 ' . $blog->blogname . '
+														</label> <a href="' . $blog->siteurl . '" target="_blank"><small>' . $blog->siteurl . '</small></a>
+												   </div>';
+	
+									}
+								}
+
+								$html .= '</div> </div>';
 							
-							
-						?>
-						<div class="user-blogs">
-							<?php echo get_avatar( $user->email, 24 ); ?> <span class="display-name"><?php echo $user->display_name; ?></span>
-							
-							<div class="user-blogs-list">
-							<?php 
-							foreach( $user_blogs as $blog ):
-								
-								if( !in_array( $blog->userblog_id, $showen ) ):
-								
-									$all_blogs[ $blog->userblog_id ] = $blog; // make the all_blogs unique
-								
-								
-								?>
-								<label> 
-									<input name="nsync_options[active][]" type="checkbox" value="<?php echo esc_attr( $blog->userblog_id ); ?>" /> 
-									<?php echo $blog->blogname;?>
-								</label> <a href="<?php echo $blog->siteurl;?>" target="_blank"><small><?php echo $blog->siteurl;?></small></a>
-								<br />
-								<?php
-								endif;
-							endforeach;
-							?>
-							</div>
-						</div>
-						<?php
-					endif; // has any blogs?
-					
-				endif; // deleted?
-			endif;
-		endforeach;
+						} // has any blogs?
+						
+				}
+			}
+
+			$number_of_pages = Nsync::paginate( $total_numer_of_users, $per_page , $pagenum , admin_url( 'options-writing.php' ) );
+			$html .= '<p id="paginate">Pages : ' . $number_of_pages  . '</p>';
+
+		}
+
+		return self::wrapModule ( "User List", $html );
+	}
+
+	public static function createSearchBox() {
+
+		if ( current_user_can('manage_sites') ) {
+			
+			$html = '<input type="text" id="nsync-add-site" class="regular-text" placeholder="url or site name " /> 
+						<p><small>Only available to Super Admins</small></p>';
+			
+  		} 
+
+  		return self::wrapModule ( "Search Sites", $html );
+	}
+	
+
+	public static function wrapModule ($text, $content, $id = '') {
 		
-		
-		/*
-		if( is_array( $all_blogs ) ):?>
-		<p style="margin:20px 0 0;">Select a site from the current site authors.</p>
-		
-		foreach( $all_blogs as $blog ): ?>
-			<label> 
-				<input name="nsync_options[active][]" type="checkbox" value="<?php echo esc_attr( $blog->userblog_id ); ?>" /> 
-				<?php echo $blog->blogname;?> <small><?php echo $blog->siteurl;?></small>
-			</label><br />
-			<?php 
-		endforeach;
-		
-		endif;
-		*/
-		
-		?>
-		<p>Pages :<?php Nsync::paginate( $total_numer_of_users, $per_page , $pagenum , admin_url( 'options-writing.php' ) ); ?></p>
-		<?php
-		
-		if( current_user_can('manage_sites') ):
-			
-			?>
-			<p style="border:1px solid #EEE; padding:10px; margin-top:10px;">
-				<label for="add-site">Search site to add </label><br />
-				<input type="text" id="nsync-add-site" class="regular-text" placeholder="url or site name " /> 
-				<br />
-				<small>Only available to Super Admins</small>
-			</p>
-			
-		<?php endif; ?>
-			
-			<p><label>Added Posts will appear in this category by default: <br />
-			
-			<?php
-			wp_dropdown_categories( array(
-				"hierarchical"=>1,
-				"name"=>"nsync_options[category]",
-				"selected"=> self::$settings['category'],
-				'show_option_none' => 'None' )
-				);
-			?>
-			</label></p>
-			<?php 
-			// Let the user check the post
-			// todo: add support for the EditFlow plugin
-			$post_status = self::$settings['post_status'];
-			
-			?>
-			<p>
-			<label>Select the Post Status <br />
-			<select name="nsync_options[post_status]">
-				<option value="0" 		<?php selected( $post_status, 0 ); ?>     		>Inherit from the post</option>
-				<option value="draft" 	<?php selected( $post_status, 'draft' ); ?> 	>Draft</option>
-				<option value="publish" <?php selected( $post_status, 'publish' ); ?> 	>Publish</option>
-				<option value="pending" <?php selected( $post_status, 'pending' ); ?> 	>Pending</option>
-			</select></label> 
-			</p>
-			<?php 
-			// force check to only users that are also members of this blog. 
-			
-			?>
-			<p>
-			<label><input type="checkbox" name="nsync_options[duplicate_files]" value="1" <?php checked( (isset(self::$settings['duplicate_files']) && self::$settings['duplicate_files']) ); ?> /> Copy files that are attached to the post to this site.</label>
-			</p>
-			
-			<p>
-			<label><input type="checkbox" name="nsync_options[force_user]" value="1" <?php checked( (isset(self::$settings['force_user']) && self::$settings['force_user'] ) ); ?> /> Only Authors, Editor and Administrators are able to remotly publish to this site.</label>
-			</p>
-				
-			<p>
-			<label><input type="checkbox" name="nsync_options[include_new_cats_tags]" value="1" <?php checked( (isset(self::$settings['include_new_cats_tags']) && self::$settings['include_new_cats_tags'] ) ); ?> /> Restrict source post's categories to ones already on your blog.</label>
-			</p>
-					
-			<p>
-			<label><input type="checkbox" name="nsync_options[link_to_source]" value="1" <?php checked( (isset(self::$settings['link_to_source']) && self::$settings['link_to_source'] ) ); ?> /> Make post title permalink go to original source.</label>
-			</p>
-			
-			<p>
-			<label><input type="checkbox" name="nsync_options[source_before]" value="1" <?php checked( (isset(self::$settings['source_before']) && self::$settings['source_before'] ) ); ?> /> Show source of post before displaying content.</label>
-			</p>
-			
-			<p>
-			<label><input type="checkbox" name="nsync_options[source_after]" value="1" <?php checked( (isset(self::$settings['source_after']) && self::$settings['source_after'] ) ); ?> /> Show source of post after displaying content.</label>
-			</p>
-			
-			<p>
-			<label><input type="text" name="nsync_options[source_template]" value="<?php echo (isset(self::$settings['source_template'])? self::$settings['source_template'] : Nsync::$default_source_template); ?>" <?php checked( (isset(self::$settings['source_template']) && self::$settings['source_template'] ) ); ?> class="regular-text" /> Template used to display source.  Valid tags include: <em>{site permalink}, {site name}, {post permalink}, {post date}, {post title}, {post author}</em></label>
-			</p>
-			<?php
+		$id_attr = '';
+
+		if ($id != '') {
+			$id_attr =  'id="' . $id . '"';
+		} 
+
+		$html = "<div " . $id_attr . " class='module'>";
+		$html .= "<p class='module-title'> " . $text . "<p>";
+		$html .= "<div>" . $content . "</div>";
+		$html .= "</div>";
+
+		return $html;
 	}
 	
 	public static function paginate( $total, $per_page, $current_page = 1 , $url_start ) {
 		
 		$total_pages = ceil( $total / $per_page );
-		for( $page = 1; $page <= $total_pages ; $page++ ) {
-			if($current_page == $page)
+		for ( $page = 1; $page <= $total_pages ; $page++ ) {
+			if ($current_page == $page)
 				$list_pages[] = $page;	
 			else
 				$list_pages[] = '<a href="'.$url_start.'?num='.$page.'">'.$page.'</a>';	
 		}
-		echo implode(" ", $list_pages );
+
+		return implode(" ", $list_pages );
 	}
 	
 	public static function validate( $input ) {
@@ -266,7 +330,7 @@ class Nsync {
 		
 		$current_blog_id = get_current_blog_id();
 		
-		if(isset($input['active']) && is_array( $input['active'] ) )
+		if (isset($input['active']) && is_array( $input['active'] ) )
 			$active = array_unique( $input['active'] );
 		else
 			$active = array();
@@ -280,12 +344,11 @@ class Nsync {
 			
 			$to_remove 	= array_diff( self::$settings['active'], $intersect );
 			
-		elseif( is_array( self::$settings['active'] ) && empty( $active ) ):
+		elseif ( is_array( self::$settings['active'] ) && empty( $active ) ):
 			
 			$to_remove 	= self::$settings['active'];
 		
 		else:
-			
 			$to_add 	= $active;
 		endif;
 		
@@ -299,11 +362,9 @@ class Nsync {
 			Nsync::add_sites( $to_add, $current_blog_id );
 		}
 		
-		
 		$input['active'] = $active;
 		
 		self::$settings = $input;
-		
 		
 		return $input;
 		
@@ -508,4 +569,12 @@ class Nsync {
 		return false;
 	}
 
+	public static function enqueue_custom_js($hook) {
+
+	    if ( 'options-writing.php' != $hook ) {
+	        return;
+	    }
+
+    	wp_enqueue_script( 'my_custom_script', NSYNC_DIR_URL . '/js/ui.js' );	
+	}
 }

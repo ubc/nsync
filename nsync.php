@@ -25,6 +25,9 @@ add_action( 'wp_ajax_nsync_lookup_site',   	array( 'Nsync', 'ajax_lookup_site' )
 add_action( 'post_submitbox_misc_actions', 	array( 'Nsync', 'post_display_from') );
 add_filter( 'post_row_actions' , 			array( 'Nsync', 'posts_display_sync'), 11, 2);
 
+add_action( 'admin_enqueue_scripts', [ 'Nsync', 'enqueue_custom_js'] );
+
+
 //settings for plugin
 $plugin_name = plugin_basename(__FILE__);
 add_filter('plugin_action_links_'.$plugin_name, 'nsync_settings_link', 10, 2);
