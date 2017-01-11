@@ -136,9 +136,6 @@ class Nsync {
 					    </p>';
 		}		
 		
-		$checked =  ( isset( self::$settings[ 'upload_dir' ] ) ? self::$settings[ 'upload_dir' ] : 'uploads');
-		$html .= "<br><div class='upload-dir'><label>Enter directory for upload:  <input type='textbox' name='nsync_options[upload_dir]' value='" . $checked  . "' </label><br><p><em> Folder must have 0777 permissions to copy over media</em></p></div>";
-
 		$value  = (isset(self::$settings['source_template'])? self::$settings['source_template'] : Nsync::$default_source_template); 
 		$checked = checked( (isset(self::$settings['source_template']) && self::$settings['source_template'] ), true, 0);
 		$html .= '<p><br>
