@@ -17,11 +17,9 @@ define( 'NSYNC_DIR_URL',  plugins_url( ''  , NSYNC_BASENAME ) );
 
 require( 'lib/class.nsync.php' );
 
-add_action( 'admin_init',       			array( 'Nsync', 'admin_init' ) );
-
+add_action( 'admin_init', array( 'Nsync', 'admin_init' ) );
 add_action( 'admin_print_styles-options-writing.php', array( 'Nsync', 'writing_script_n_style' ) );
 add_action( 'wp_ajax_nsync_lookup_site', array( 'Nsync', 'ajax_lookup_site' ) );
-
 add_action( 'post_submitbox_misc_actions', array( 'Nsync', 'post_display_from') );
 
 add_filter( 'post_row_actions' , array( 'Nsync', 'posts_display_sync'), 11, 2);
@@ -45,6 +43,10 @@ function nsync_uninstall() {
 	delete_option( 'nsync_options' );
 }
 
+/**
+ * Change the writting link under settings
+ *
+ **/
 function nsync_settings_link($links, $file) {
 	$settings_link = '<a href="'.admin_url().'options-writing.php">Settings</a>';
 	array_unshift($links, $settings_link);

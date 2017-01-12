@@ -1,13 +1,23 @@
 <?php 
 
+/**
+* This is tne main Nsnyc plugin class. Handles adding or removing network sites to a list of allowed content pushing sites. 
+*
+* @author     ctlt
+* @version    1.1
+*/
 
 class Nsync {
 	
+	//global variables.
 	static $settings = array();
 	static $currently_publishing = false;
 	static $post_from = array();
 	static $default_source_template = "source: <a href='{post permalink}'>{post title}</a>";
 	
+	/**
+	 * Initialize wordpress administration functionality.
+	 */
 	public static function admin_init() {
 		
 		self::$settings = get_option( 'nsync_options' );
@@ -32,7 +42,10 @@ class Nsync {
 		wp_register_style( 'nsync-post-writing', NSYNC_DIR_URL."/css/writing.css", null, '1.0', 'screen' );
 		
 	}
-	/* SETTINGS */ 
+	
+   /**
+	* Compile the administration modules and UI.
+	*/
 	public static function add_network_sites() {
 		
 		global $current_user;
@@ -44,35 +57,34 @@ class Nsync {
 			$active = self::$settings['active'];
 		} 
 		
+		// The admin tab navigation.
 		echo "<div id='nsync-nav'><div id='current'> <p>Current</p> </div> <div id='add'> <p>Add Sites</p> </div><div id='general'> <p>General</p> </div></div>";
-
+		
+		// add current publishing sites module.
 		echo "<div class='current nsync'>";
-	   	//add current publishing sites module
 		echo self::createPublishingList( $active );
 		echo "</div>";
-
+		
+		// add modules for adding sites to push list.
 		echo "<div class='add nsync'>";
-		
-		//add seachbox
 		echo self::createSearchBox();
-		
-	    //add current publishing sites module
 		echo self::createExternalPublishing( $current_user );
-
-	    //add user list
 		echo self::createUserList( $current_user );
 		echo "</div>";
-
-		echo "<div class='general nsync'>";
-		//create category module
-		echo self::createPostCategory();
 		
-		//add post settings
+		// add modules for general post settings.
+		echo "<div class='general nsync'>";
+		echo self::createPostCategory();
 		echo self::createPostInformation();
 		echo "</div>";
 		
 	}
-
+	
+   /**
+	* Creates the view for choosing a category to autmatically be attached to pushed posts.
+	*
+	* @return string     html of the module to be printed.
+	*/
 	public static function createPostCategory(  ) {
 
 		$html = '';
@@ -83,16 +95,22 @@ class Nsync {
 						"selected" => self::$settings['category'],
 						'echo' => 0,
 						'show_option_none' => 'None' 
-					);
+					 );
+		
 		$html .= '<p><label>Select Category: ' . wp_dropdown_categories( $drop_down ) . '</label></p>';
 		$html .= '<p><em> This Category is added to the pushed posts by default.</em></p>';
 
 		return self::wrapModule ( "Category for Nsync", $html );
 	}
 
-
+   /**
+	* Creates the view for general settings on pushed posts.
+	*
+	* @return string     html of the module to be printed.
+	*/
 	public static function createPostInformation(  ) {
-
+		
+		// array is for storing all information to create input checkboxes.
 		$post_settings = [ 
 			'duplicate_files' => "Copy files that are attached to the post to this site.",
 			'force_user' => "Only Authors, Editor and Administrators are able to remotely publish to this site.",
@@ -113,18 +131,17 @@ class Nsync {
 				  <select name="nsync_options[post_status]">';
 
 		// Let the user check the post
-		// todo: add support for the EditFlow plugin
 		$post_status = self::$settings['post_status'];
 
 		foreach ($post_status_setting as $value => $text) {
+			
 			$selected = selected( $post_status, $value, 0 );
 			$html .= '<option value="' . $value . '" ' . $selected  . '>' . $text . '</option>';
-		
 		}
 
 		$html .= '</select></label></p>';			
 			
-				// force check to only users that are also members of this blog. 
+		// force check to only users that are also members of this blog. 
 		foreach ($post_settings as $input => $msg) {
 
 			$checked =  checked( ( isset( self::$settings[ $input ] ) && self::$settings[ $input ]), true, 0);
@@ -152,7 +169,14 @@ class Nsync {
 
 		return self::wrapModule ( "Post Information", $html );
 	}
-
+	
+   /**
+	* Creates module that shows the list of sites that belong to the current admin.
+	*
+	* @param object  $current_user    the current user's information.
+	* 
+	* @return string     html of the module to be printed.
+	*/
 	public static function createExternalPublishing( $current_user ) {
 
 		$html  = ''; 
@@ -181,7 +205,14 @@ class Nsync {
 
 		return self::wrapModule ( "Avaliable Publishing Sites", $html );
 	}
-
+	
+   /**
+	* Creates module that shows what sites are currently pushing to your site.
+	*
+	* @param  array  $active      the list of active sites pushing to site.
+	* 
+	* @return string   html of the module to be printed.
+	*/
 	public static function createPublishingList( $active ) {
 
 		$html  = ''; 
@@ -210,10 +241,16 @@ class Nsync {
 			$html .= '<p><em>There are currently no external sites that are able to publish content on your site.</em></p><br>';
 		}
 		
-
 		return self::wrapModule ( "Current Publishing Sites", $html );
 	}
-
+	
+   /**
+	* Creates module that shows the users and their associated network sites.
+	*
+	* @param  object  $current_user      the current user's information.
+	*
+	* @return string   html of the module to be printed.
+	*/
 	public static function createUserList( $current_user ) {
 
 	    // all the users sites 
@@ -279,6 +316,7 @@ class Nsync {
 				}
 			}
 
+			// handles pagincation based on how many users are found
 			$number_of_pages = Nsync::paginate( $total_numer_of_users, $per_page , $pagenum , admin_url( 'options-writing.php' ) );
 			$html .= '<p id="paginate">Pages : ' . $number_of_pages  . '</p>';
 
@@ -286,7 +324,12 @@ class Nsync {
 
 		return self::wrapModule ( "User List", $html );
 	}
-
+	
+	/**
+	 * Creates module that allows user to search sites and group select results.
+	 *
+	 * @return string   html of the module to be printed.
+	 */
 	public static function createSearchBox() {
 
 		if ( current_user_can('manage_sites') ) {
@@ -300,6 +343,15 @@ class Nsync {
   		return self::wrapModule ( "Search Sites", $html );
 	}
 	
+   /**
+	* Wraps html of each module into a consistant looking div
+	*
+	* @param  string  $text      title of module.
+	* @param  string  $content   html to be displayed in module.
+	* @param  string  $id        id to add to module.
+	*
+	* @return string   html of the module to be printed.
+	*/
 	public static function wrapModule ($text, $content, $id = '') {
 		
 		$id_attr = '';
@@ -316,6 +368,16 @@ class Nsync {
 		return $html;
 	}
 	
+   /**
+	* Handles pagination logic for the user list module.
+	*
+	* @param  integer  $total          total amount of users found.
+	* @param  integer  $per_page       how many users are shown each page.
+	* @param  integer  $current_page   the current page location.
+	* @param  string   $url_start       the base for new url. 
+	*
+	* @return string   list of page numbers.
+	*/
 	public static function paginate( $total, $per_page, $current_page = 1 , $url_start ) {
 		
 		$total_pages = ceil( $total / $per_page );
@@ -329,8 +391,15 @@ class Nsync {
 		return implode(" ", $list_pages );
 	}
 	
+   /**
+	* validation callback
+	*
+	* @param  array  $input  information on admin inputs
+	*
+	* @return array  information on admin inputs
+	*/
 	public static function validate( $input ) {
-		$to_add = null;
+	
 		
 		$current_blog_id = get_current_blog_id();
 		
@@ -341,7 +410,8 @@ class Nsync {
 		
 		$to_remove = array();
 		$to_add = array();
-		if( is_array( self::$settings['active'] ) && !empty( $active ) ):
+		
+		if ( is_array( self::$settings['active'] ) && !empty( $active ) ):
 			$intersect 	= array_intersect( self::$settings['active'], $active );
 			
 			$to_add 	= array_diff( $active, $intersect );
@@ -374,7 +444,15 @@ class Nsync {
 		
 	}
 	
+   /**
+	* Removes sites from active pushing list
+	*
+	* @param  array    $to_remove          list of blogs to remove from pushing list.
+	* @param  integer  $current_blog_id    the id of the current network site.
+	* 
+	*/
 	public static function remove_sites( $to_remove, $current_blog_id ) {
+		
 		// remove sites that you don't want any more.
 		if( !empty( $to_remove ) ):
 		
@@ -386,6 +464,7 @@ class Nsync {
 				
 				
 				if( is_array($post_to) ):
+				
 					// there is nothing to remove if we don't have the $post_to set as an array
 					$post_to = array_diff( $post_to , array( $current_blog_id ) );
 					$post_to = array_unique($post_to);
@@ -400,6 +479,13 @@ class Nsync {
 		
 	}
 	
+   /**
+	* Add a site to the list of allowed publishing sites. 
+	*
+	* @param  array    $to_add               list of selected sites to add to the pushing list. 
+	* @param  integer  $current_blog_id      the id of the current network site.
+	*
+	*/
 	public static function add_sites( $to_add , $current_blog_id) {
 	
 		
@@ -424,16 +510,25 @@ class Nsync {
 		endif;
 	}
 	
+   /**
+	* Enqueue all scripts if on the admin
+	*
+	*/
 	public static function writing_script_n_style() {
-		if( current_user_can( 'manage_sites' ) ):
+		
+		if ( current_user_can( 'manage_sites' ) ) {
+		
 			wp_enqueue_script( 'nsync-add-site' );
 			wp_enqueue_script( 'nsync-ui' );
-			
-		endif;
+		}
 		
 		wp_enqueue_style( 'nsync-post-writing' );
 	}
 	
+   /**
+	* Handles triggered on ajax request made in add-site.js. 
+	*
+	*/
 	public static function ajax_lookup_site() {
 		
 		if( !current_user_can( 'manage_sites' ) ):
@@ -450,7 +545,15 @@ class Nsync {
 		die();
 
 	}
-		
+	
+   /**
+	* Based on a requested search query the database for a list of sites. 
+	* This used for the search module and is triggered by ajax.
+	*
+	* @param  string  $s   search query
+	*
+	* @return array  a list of sites that match the search. Includes the name of the site and url.
+	*/
 	public static function search_site( $s ) {
 		
 		global $wpdb;
@@ -483,6 +586,7 @@ class Nsync {
 					preg_match( '/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.?$/', $s ) ||
 					preg_match( '/^[0-9]{1,3}\.[0-9]{1,3}\.?$/', $s ) ||
 					preg_match( '/^[0-9]{1,3}\.$/', $s ) ) {
+			
 			// IPv4 address
 			$reg_blog_ids = $wpdb->get_col( "SELECT blog_id FROM {$wpdb->registration_log} WHERE {$wpdb->registration_log}.IP LIKE ( '{$like_s}$wild' )" );
 
@@ -493,7 +597,9 @@ class Nsync {
 				FROM {$wpdb->blogs}
 				WHERE site_id = '{$wpdb->siteid}'
 				AND {$wpdb->blogs}.blog_id IN (" . implode( ', ', $reg_blog_ids ) . ")";
+			
 		} else {
+			
 			if ( is_numeric($s) && empty( $wild ) ) {
 				$query .= " AND ( {$wpdb->blogs}.blog_id = '{$like_s}' )";
 			} elseif ( is_subdomain_install() ) {
@@ -518,12 +624,15 @@ class Nsync {
 		$pagenum = 1;
 		$per_page = 5;
 		$query .= " LIMIT " . intval( ( $pagenum - 1 ) * $per_page ) . ", " . intval( $per_page );
-		// run the query 
 		
+		// run the query 
 		return $wpdb->get_results( $query, ARRAY_A );
 	}
 	
-	// this displays the if the post if coming from somewhere else. 
+   /**
+	* This displays if the post if coming from somewhere else. 
+	*
+	*/
 	public static function post_display_from() {
 		global $post;
 		self::$post_from = get_post_meta( $post->ID, '_nsync-from', true);
@@ -543,6 +652,14 @@ class Nsync {
 		}
 	}
 	
+   /**
+	* Adds a comment under each post in the Posts admin table.  
+	*
+	* @param  array  $actions    array of action links shown under each post when hovered over. 
+	* @param  object  $post      post information.
+	*
+	* @return array   list of action links shown under each post when hovered over with the new action added. 
+	*/
 	public static function posts_display_sync( $actions, $post ) {
 		
 		self::$post_from = get_post_meta( $post->ID, '_nsync-from', true );
@@ -551,17 +668,24 @@ class Nsync {
 			
 			$bloginfo = get_blog_details( array( 'blog_id' => self::$post_from['blog'] ) );
 			
-			$end = '<em>'.$bloginfo->blogname.'</em> <a href="'.esc_url( $bloginfo->siteurl ).'/?p='.self::$post_from['post_id'].'">view post</a>';
+			$end = '<em>'.$bloginfo->blogname.'</em> <a href="'.esc_url( $bloginfo->siteurl ).'/?p='.self::$post_from['post_id'].'"> | View Post</a>';
 			
 			$prefix = ( Nsync::allow_to_publish_to_me( self::$post_from['blog'] )  ? 'Post updated from': 'Originally posted on' );
 			
-			$actions['sync'] = $prefix.": ".$end;
+			$actions['sync'] = "<p>" . $prefix . ": " . $end . "</p>";
 			
 		endif;
 		
 		return $actions;
 	}
 	
+   /**
+	* Sets which sites are allowed to push content to site. 
+	*
+	* @param  array  $blog_id   id of blog.
+	*
+	* @return boolean   if the site can publish or not. 
+	*/
 	public static function allow_to_publish_to_me( $blog_id ) {
 	
 		if( !empty( self::$settings) ):

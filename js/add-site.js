@@ -1,8 +1,13 @@
 
+/**
+ * Initiate search functionality
+ */
+
 var Nsync_Add_Site = {
 	
 	onReady : function() {
 		
+		// trigger ajax search call
 		jQuery( "#nsync-add-site" ).click( function() {
 		
 			var search = jQuery( "#nsync-site-search" ).val();
@@ -43,7 +48,7 @@ var Nsync_Add_Site = {
 						
 		});
 		
-		
+	   // select all sites or unselect
 	   jQuery('.check').click( function() {
 	
 		   if (jQuery(this).text() == "uncheck all") {
@@ -61,8 +66,5 @@ var Nsync_Add_Site = {
 
 	}
 }
-
-
-
 
 jQuery( document ).ready( Nsync_Add_Site.onReady );
