@@ -27,9 +27,9 @@ class Nsync {
 		);
 		
 		// register scipts and styles
-		wp_register_script( 'nsync-add-site', NSYNC_DIR_URL."/js/add-site.js", array( 'jquery', 'jquery-ui-autocomplete' ), '1.0', true );
+		wp_register_script( 'nsync-ui', NSYNC_DIR_URL . '/js/ui.js');
+		wp_register_script( 'nsync-add-site', NSYNC_DIR_URL."/js/add-site.js");
 		wp_register_style( 'nsync-post-writing', NSYNC_DIR_URL."/css/writing.css", null, '1.0', 'screen' );
-		
 		
 	}
 	/* SETTINGS */ 
@@ -52,11 +52,12 @@ class Nsync {
 		echo "</div>";
 
 		echo "<div class='add nsync'>";
-	    //add current publishing sites module
-		echo self::createExternalPublishing( $current_user );
-
+		
 		//add seachbox
 		echo self::createSearchBox();
+		
+	    //add current publishing sites module
+		echo self::createExternalPublishing( $current_user );
 
 	    //add user list
 		echo self::createUserList( $current_user );
@@ -71,7 +72,6 @@ class Nsync {
 		echo "</div>";
 		
 	}
-
 
 	public static function createPostCategory(  ) {
 
@@ -209,8 +209,9 @@ class Nsync {
 	
 			$html .= '<p><em>There are currently no external sites that are able to publish content on your site.</em></p><br>';
 		}
+		
 
-		return self::wrapModule ( "Current Publishing Sites", $html, 'select-site' );
+		return self::wrapModule ( "Current Publishing Sites", $html );
 	}
 
 	public static function createUserList( $current_user ) {
@@ -239,13 +240,20 @@ class Nsync {
 				if ( $current_user->ID != $user->ID && !$user->deleted ) { // don't add the current user blogs they are listed above anyways
 
 					$user_blogs = get_blogs_of_user( $user->ID );
-	
+
 						if ( is_array( $user_blogs ) ) {
 
 							$avatar_image = get_avatar( $user->email, 24 );	
-
+							
+							if ($user->last_name && $user->last_name) {
+								$display_name = $user->first_name . ' ' . $user->last_name . '<em>(' . $user->display_name . ')</em>';
+							} else {
+								$display_name = $user->display_name;
+							}
+							
+						
 							$html .= '<div class="user-blogs">' . $avatar_image .
-									 '<span class="display-name">' . $user->display_name . '</span>';
+									 '<span class="display-name">' . $display_name . '</span>';
 								
 							$html .= '<div class="user-blogs-list">';
 						
@@ -261,7 +269,6 @@ class Nsync {
 															 ' . $blog->blogname . '
 														</label> <a href="' . $blog->siteurl . '" target="_blank"><small>' . $blog->siteurl . '</small></a>
 												   </div>';
-	
 									}
 								}
 
@@ -284,15 +291,15 @@ class Nsync {
 
 		if ( current_user_can('manage_sites') ) {
 			
-			$html = '<input type="text" id="nsync-add-site" class="regular-text" placeholder="url or site name " /> 
-						<p><small>Only available to Super Admins</small></p>';
+			$html = '<input type="text" id="nsync-site-search" class="regular-text" placeholder="url or site name " /> <div id="nsync-add-site"> Search </div>';
+			$html .= "<h4>Search Results:</h4><div class='check'>uncheck all</div><div id='search-site-results'></div>";
+			$html .= "<p><small>Only available to Super Admins</small></p>";
 			
   		} 
 
   		return self::wrapModule ( "Search Sites", $html );
 	}
 	
-
 	public static function wrapModule ($text, $content, $id = '') {
 		
 		$id_attr = '';
@@ -419,8 +426,8 @@ class Nsync {
 	
 	public static function writing_script_n_style() {
 		if( current_user_can( 'manage_sites' ) ):
-			wp_enqueue_script( 'jquery-ui-autocomplete' ); 
 			wp_enqueue_script( 'nsync-add-site' );
+			wp_enqueue_script( 'nsync-ui' );
 			
 		endif;
 		
@@ -434,7 +441,7 @@ class Nsync {
 			die();
 		endif;
 		
-		$sites = Nsync::search_site( $_GET['term'] );
+		$sites = Nsync::search_site( $_POST['term'] );
 			
 		foreach( $sites as $site )
 			$results[] = array( 'label'=> $site['domain'].$site['path'] , 'value'=> $site['blog_id'] );
@@ -565,13 +572,5 @@ class Nsync {
 		
 		return false;
 	}
-
-	public static function enqueue_custom_js($hook) {
-
-	    if ( 'options-writing.php' != $hook ) {
-	        return;
-	    }
-
-    	wp_enqueue_script( 'my_custom_script', NSYNC_DIR_URL . '/js/ui.js' );	
-	}
+	
 }

@@ -13,7 +13,6 @@ var initUI = function() {
 		jQuery("#" + id).css({"background-color" : "#777"});
 		jQuery("." + id + ".nsync").fadeIn();
 	});
-
 }
 
 jQuery( document ).ready( initUI );

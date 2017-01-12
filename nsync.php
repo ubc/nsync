@@ -20,13 +20,11 @@ require( 'lib/class.nsync.php' );
 add_action( 'admin_init',       			array( 'Nsync', 'admin_init' ) );
 
 add_action( 'admin_print_styles-options-writing.php', array( 'Nsync', 'writing_script_n_style' ) );
-add_action( 'wp_ajax_nsync_lookup_site',   	array( 'Nsync', 'ajax_lookup_site' ) );
+add_action( 'wp_ajax_nsync_lookup_site', array( 'Nsync', 'ajax_lookup_site' ) );
 
-add_action( 'post_submitbox_misc_actions', 	array( 'Nsync', 'post_display_from') );
-add_filter( 'post_row_actions' , 			array( 'Nsync', 'posts_display_sync'), 11, 2);
+add_action( 'post_submitbox_misc_actions', array( 'Nsync', 'post_display_from') );
 
-add_action( 'admin_enqueue_scripts', [ 'Nsync', 'enqueue_custom_js'] );
-
+add_filter( 'post_row_actions' , array( 'Nsync', 'posts_display_sync'), 11, 2);
 
 //settings for plugin
 $plugin_name = plugin_basename(__FILE__);
