@@ -350,7 +350,7 @@ class Nsync {
 	* @param  string  $content   html to be displayed in module.
 	* @param  string  $id        id to add to module.
 	*
-	* @return string   html of the module to be printed.
+	* @return string  $html   html of the module to be printed.
 	*/
 	public static function wrapModule ($text, $content, $id = '') {
 		
@@ -396,7 +396,7 @@ class Nsync {
 	*
 	* @param  array  $input  information on admin inputs
 	*
-	* @return array  information on admin inputs
+	* @return array  $input  information on admin inputs
 	*/
 	public static function validate( $input ) {
 	
@@ -441,7 +441,6 @@ class Nsync {
 		self::$settings = $input;
 		
 		return $input;
-		
 	}
 	
    /**
@@ -505,7 +504,6 @@ class Nsync {
 					unset( $post_to ); 
 				endif;
 			endforeach;
-			
 			
 		endif;
 	}
@@ -658,7 +656,7 @@ class Nsync {
 	* @param  array  $actions    array of action links shown under each post when hovered over. 
 	* @param  object  $post      post information.
 	*
-	* @return array   list of action links shown under each post when hovered over with the new action added. 
+	* @return array  $actions   list of action links shown under each post when hovered over with the new action added. 
 	*/
 	public static function posts_display_sync( $actions, $post ) {
 		
