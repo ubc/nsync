@@ -1,7 +1,7 @@
 <?php 
 
 /**
-* This is tne main Nsnyc plugin class. Handles adding or removing network sites to a list of allowed content pushing sites. 
+* This is the main Nsnyc plugin class. Handles adding or removing network sites to a list of allowed content pushing sites. 
 *
 * @author     ctlt
 * @version    1.1
@@ -57,27 +57,72 @@ class Nsync {
 			$active = self::$settings['active'];
 		} 
 		
+		$final_html = "";
 		// The admin tab navigation.
-		echo "<div id='nsync-nav'><div id='current'> <p>Current</p> </div> <div id='add'> <p>Add Sites</p> </div><div id='general'> <p>General</p> </div></div>";
+		$final_html .= "<div id='nsync-nav'><div id='current'> <p>Current</p> </div> <div id='add'> <p>Add Sites</p> </div><div id='general'> <p>General</p> </div></div>";
 		
 		// add current publishing sites module.
-		echo "<div class='current nsync'>";
-		echo self::createPublishingList( $active );
-		echo "</div>";
+		$final_html .= "<div class='current nsync'>";
+		$final_html .=  self::createPublishingList( $active );
+		$final_html .= "</div>";
 		
 		// add modules for adding sites to push list.
-		echo "<div class='add nsync'>";
-		echo self::createSearchBox();
-		echo self::createExternalPublishing( $current_user );
-		echo self::createUserList( $current_user );
-		echo "</div>";
+		$final_html .=  "<div class='add nsync'>";
+		$final_html .=  self::createSearchBox();
+		$final_html .=  self::createExternalPublishing( $current_user );
+		$final_html .=  self::createUserList( $current_user );
+		$final_html .=  "</div>";
 		
 		// add modules for general post settings.
-		echo "<div class='general nsync'>";
-		echo self::createPostCategory();
-		echo self::createPostInformation();
-		echo "</div>";
+		$final_html .=  "<div class='general nsync'>";
+		$final_html .=  self::createPostCategory();
+		$final_html .=  self::createPostInformation();
+		$final_html .=  "</div>";
 		
+		echo self::escapeOuput( $final_html );
+		
+	}
+	
+	/**
+	 * What html tags and attributes are allowed to be displayed
+	 *
+	 * @return string     allowed html string.
+	*/
+	public static function escapeOuput( $content  ) {
+		
+		$allowed_atts = array(
+			'class'      => array(),
+			'type'       => array(),
+			'id'         => array(),
+			'alt'        => array(),
+			'href'       => array(),
+			'checked'       => array(),
+			'type'       => array(),
+			'value'      => array(),
+			'name'       => array(),
+			'for'        => array(),
+			'title'      => array(),
+		);
+		
+		$allowedposttags['label']    = $allowed_atts;
+		$allowedposttags['input']    = $allowed_atts;
+		$allowedposttags['strong']   = $allowed_atts;
+		$allowedposttags['small']    = $allowed_atts;
+		$allowedposttags['span']     = $allowed_atts;
+		$allowedposttags['div']      = $allowed_atts;
+		$allowedposttags['h1']       = $allowed_atts;
+		$allowedposttags['h2']       = $allowed_atts;
+		$allowedposttags['h3']       = $allowed_atts;
+		$allowedposttags['h4']       = $allowed_atts;
+		$allowedposttags['h5']       = $allowed_atts;
+		$allowedposttags['em']       = $allowed_atts;
+		$allowedposttags['hr']       = $allowed_atts;
+		$allowedposttags['br']       = $allowed_atts;
+		$allowedposttags['p']        = $allowed_atts;
+		$allowedposttags['a']        = $allowed_atts;
+		$allowedposttags['b']        = $allowed_atts;
+	
+		return wp_kses( $content, $allowedposttags);
 	}
 	
    /**
@@ -158,7 +203,7 @@ class Nsync {
 		$html .= '<p><br>
 					<label> 
 						Template used to display source: 
-					  	<input type="text" name="nsync_options[source_template]" value="' . $value . '" ' . $checked .' class="regular-text" /> 
+					  	<input type="text" name="nsync_options[source_template]" value="' . esc_attr($value) . '"  ' . $checked .' class="regular-text" /> 
 				  	</label>
 				  </p>';
 
@@ -181,27 +226,32 @@ class Nsync {
 
 		$html  = ''; 
 
-		if ( $current_user->ID ) {
-			$user_blogs = get_blogs_of_user( $current_user->ID );
+		if ( is_null( $current_user->ID )  ) {
+			return $html;
+		}
+		
+		$user_blogs = get_blogs_of_user( $current_user->ID );
 
-			if ( is_array( $user_blogs ) ) { 
+		if ( !is_array( $user_blogs ) ) {
+			return $html;
+		}
 
-			   $html  .=  "<p class='list-title'>Select from user " . $current_user->user_nicename . " current sites, that you want to enabled the external publishing from.</p> ";
-				
-				foreach ( $user_blogs as $blog ) {
-					
-					if ( $current_blog_id != $blog->userblog_id ) {
-						$html  .= '<div class="publishing-sites">
-										<label> 
-											<input name="nsync_options[active][]" type="checkbox" value="' . esc_attr( $blog->userblog_id ) . '" /> ' . $blog->blogname . 
-										'</label> 
-										<p><small>' . $blog->siteurl . '</small></p>
-									</div>';
-						$showen[] = $blog->userblog_id; 
-					}
-				}
-			} 
-		} 
+	   $html  .=  "<p class='list-title'>Select from user " . $current_user->user_nicename . " current sites, that you want to enabled the external publishing from.</p> ";
+		
+		foreach ( $user_blogs as $blog ) {
+			
+			if ( $current_blog_id != $blog->userblog_id ) {
+				$html  .= '<div class="publishing-sites">
+								<label> 
+									<input name="nsync_options[active][]" type="checkbox" value="' . esc_attr( $blog->userblog_id ) . '" /> ' . $blog->blogname . 
+								'</label> 
+								<p><small>' . $blog->siteurl . '</small></p>
+							</div>';
+				$showen[] = $blog->userblog_id; 
+			}
+		}
+	
+
 
 		return self::wrapModule ( "Avaliable Publishing Sites", $html );
 	}
@@ -382,12 +432,15 @@ class Nsync {
 		
 		$total_pages = ceil( $total / $per_page );
 		for ( $page = 1; $page <= $total_pages ; $page++ ) {
-			if ($current_page == $page)
+			
+			if ($current_page == $page) {
 				$list_pages[] = $page;	
-			else
+			} else {
 				$list_pages[] = '<a href="'.$url_start.'?num='.$page.'">'.$page.'</a>';	
+			}
 		}
-
+		
+		// I changed this from echo to return so I can add the generated link to an html string
 		return implode(" ", $list_pages );
 	}
 	
@@ -403,10 +456,11 @@ class Nsync {
 		
 		$current_blog_id = get_current_blog_id();
 		
-		if (isset($input['active']) && is_array( $input['active'] ) )
+		if (isset($input['active']) && is_array( $input['active'] ) ) {
 			$active = array_unique( $input['active'] );
-		else
+		} else {
 			$active = array();
+		}
 		
 		$to_remove = array();
 		$to_add = array();
@@ -534,7 +588,7 @@ class Nsync {
 			die();
 		endif;
 		
-		$sites = Nsync::search_site( $_POST['term'] );
+		$sites = Nsync::search_site( filter_var($_POST['term'], FILTER_SANITIZE_STRING) );
 			
 		foreach( $sites as $site )
 			$results[] = array( 'label'=> $site['domain'].$site['path'] , 'value'=> $site['blog_id'] );
@@ -569,10 +623,14 @@ class Nsync {
 		// If the network is large and a search is not being performed, show only the latest blogs with no paging in order
 		// to avoid expensive count queries.
 		if ( !$s && wp_is_large_network() ) {
-			if ( !isset($_REQUEST['orderby']) )
+			
+			if ( !isset($_REQUEST['orderby']) ) {
 				$_GET['orderby'] = $_REQUEST['orderby'] = '';
-			if ( !isset($_REQUEST['order']) )
+			}
+			
+			if ( !isset($_REQUEST['order']) ) {
 				$_GET['order'] = $_REQUEST['order'] = 'DESC';
+			}
 		}
 
 		$query = "SELECT * FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' ";
@@ -588,8 +646,10 @@ class Nsync {
 			// IPv4 address
 			$reg_blog_ids = $wpdb->get_col( "SELECT blog_id FROM {$wpdb->registration_log} WHERE {$wpdb->registration_log}.IP LIKE ( '{$like_s}$wild' )" );
 
-			if ( !$reg_blog_ids )
+			if ( !$reg_blog_ids ) {
+				
 				$reg_blog_ids = array( 0 );
+			}
 
 			$query = "SELECT *
 				FROM {$wpdb->blogs}
@@ -613,10 +673,11 @@ class Nsync {
 			}
 		}
 		// order by 
-		if ( is_subdomain_install() )
+		if ( is_subdomain_install() ) {
 			$query .= ' ORDER BY domain ';
-		else
+		} else {
 			$query .= ' ORDER BY path ';
+		}
 		
 		// limit 
 		$pagenum = 1;
@@ -635,8 +696,10 @@ class Nsync {
 		global $post;
 		self::$post_from = get_post_meta( $post->ID, '_nsync-from', true);
 		
-		if( defined( 'NSYNC_PUSH_BASENAME') )
+		if( defined( 'NSYNC_PUSH_BASENAME') ) {
+			
 			Nsync_Push::$post_from = self::$post_from;
+		}
 		
 		if( !empty(self::$post_from) ) {
 			$bloginfo = get_blog_details( array( 'blog_id' => self::$post_from['blog'] ) ); 

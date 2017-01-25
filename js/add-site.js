@@ -38,10 +38,10 @@ var Nsync_Add_Site = {
 								 jQuery('#search-site-results').html("<p> No Results </p>").fadeIn();
 					    	}
 						 },
-						 error: function(){
+						 error: function(xhr, status, error){
 	
 							 jQuery(".check").fadeOut();
-							 jQuery('#search-site-results').html("<p> Error Occured </p>").fadeIn();
+							 jQuery('#search-site-results').html("<p> The following error occured : " + xhr.responseText + "</p>").fadeIn();
 					     } 
 					});  
 			}
