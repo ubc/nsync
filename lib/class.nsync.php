@@ -79,7 +79,7 @@ class Nsync {
 		$final_html .=  self::createPostInformation();
 		$final_html .=  "</div>";
 		
-		echo self::escapeOuput( $final_html );
+		echo self::escapeOutput( $final_html );
 		
 	}
 	
@@ -88,7 +88,7 @@ class Nsync {
 	 *
 	 * @return string     allowed html string.
 	*/
-	public static function escapeOuput( $content  ) {
+	public static function escapeOutput( $content  ) {
 		
 		$allowed_atts = array(
 			'class'      => array(),
