@@ -1,38 +1,70 @@
 
+/**
+ * Initiate search functionality
+ */
+
 var Nsync_Add_Site = {
 	
 	onReady : function() {
 		
-		var cache = {},
-			lastXhr;
-		jQuery( "#nsync-add-site" ).autocomplete({
-			minLength: 2,
-			source: function( request, response ) {
-				var term = request.term;
-				if ( term in cache ) {
-					response( cache[ term ] );
-					return;
-				}
+		// trigger ajax search call
+		jQuery( "#nsync-add-site" ).click( function() {
+		
+			var search = jQuery( "#nsync-site-search" ).val();
+			var html = "";
+			
+			var data = {
+					'action': 'nsync_lookup_site',
+					'term': search 
+				};
 				
-				lastXhr = jQuery.getJSON( ajaxurl+"?action=nsync_lookup_site", request, function( data, status, xhr ) {
-					
-					cache[ term ] = data;
-					if ( xhr === lastXhr ) {
-						response( data );
-					}
-				});
-			},
-			select: function(event, ui) { 
+			if (search != "") {
 				
-				var html = '<label><input name="nsync_options[active][]" type="checkbox" checked="checked" value="'+ui.item.value+'" /> '+ui.item.label+'</label><br />';
-				
-				jQuery('#select-site').append(html);
-				jQuery( "#nsync-add-site" ).val( '' );
-			 }
+				jQuery.ajax({ 
+					     type : "post",
+					     dataType : "json",
+					     url : "admin-ajax.php",
+					     data : data,
+					     success: function(response) {
+					    	if (response != null) {
+							     jQuery.each(response, function( i, site ) {
+							    	 html += '<div class="search-result-item"><label><input name="nsync_options[active][]" type="checkbox" checked="checked" value="' + site.value + '" /> ' + site.label + '</label></div>';
+								     jQuery('#search-site-results').html(html).fadeIn();
+								  });
+							     
+							     jQuery(".check").fadeIn();
+					    	} else {
+					    		 jQuery(".check").fadeOut();
+								 jQuery('#search-site-results').html("<p> No Results </p>").fadeIn();
+					    	}
+						 },
+						 error: function(xhr, status, error){
+	
+							 jQuery(".check").fadeOut();
+							 jQuery('#search-site-results').html("<p> The following error occured : " + xhr.responseText + "</p>").fadeIn();
+					     } 
+					});  
+			}
+						
 		});
+		
+	   // select all sites or unselect
+	   jQuery('.check').click( function() {
+	
+		   if (jQuery(this).text() == "uncheck all") {
+			   
+			   jQuery('.search-result-item input:checkbox').removeAttr('checked');
+			   jQuery(this).text('check all');  
+		   
+		   } else {
+			   jQuery('.search-result-item input:checkbox').attr('checked','checked');
+			   jQuery(this).text('uncheck all');
+			   
+		   }
+			
+		});
+
 	}
-
-
 }
 
 jQuery( document ).ready( Nsync_Add_Site.onReady );

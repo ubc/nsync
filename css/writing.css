@@ -3,25 +3,149 @@
 	position: relative;
 	overflow: hidden;
 	margin-bottom: 15px;
-	border-bottom: 1px solid #EEE;
+	border-left: 5px solid #ddd;
+	margin-top: 10px;
+	cursor: pointer;
+    background-color: #ebebeb;
+    padding: 10px;
 }
-.user-blogs .display-name{
+.user-blogs .display-name {
 	display: block;
 	margin-left: 34px;
 	font-size: 14px;
+    padding-bottom: 10px;
+    font-weight: bold;
+    display: inline-block;
+    width:500px;
 	
+}
+
+.user-blogs .display-name em {
+	font-size: 13px;
+    font-weight: 600;
+    margin-left: 10px;
 }
 .user-blogs img{
 	float: left;
 }
-.user-blogs-list label{
+.user-blogs-list {
+	display: none;
+    padding: 5px;
+}
+.user-blogs-list label {
 	display: block;
-	margin-left: 34px;
 	float: left;
 	clear: both;
-	width: 250px;
+    min-width: 300px;
 }
-.user-blogs-list a{
+.publishing-sites label small {
+	margin-left: 20px;
+}
+.publishing-sites p small, .publishing-sites label, .search-result-item label{
+	float: left;
+}
+.publishing-sites label, .search-result-item label{
+	min-width:200px;
+}
+.user-blogs-list a {
 	margin-left: 10px;
 	float: left;
+}
+
+#paginate {
+	font-size: 12px;
+    margin-top: 10px;
+    margin-left: 10px;
+    color: #777;
+}
+
+.user-blogs-list .user-blogs-item:hover, .publishing-sites:hover, .search-result-item:hover {
+	background-color: #ddd;
+}
+
+
+.user-blogs-list .user-blogs-item, .publishing-sites, .search-result-item  {
+	width: 100%;
+    display: inline-block;
+    padding: 5px;
+    margin-left: 34px;
+}
+.module p.module-title {
+	background-color: #ddd;
+    padding: 5px;
+    font-weight: bold;
+    margin-top: 0px;
+    padding-left: 10px;
+}
+
+.module {
+	border:1px solid #DDD; 
+	margin-top:10px;
+	padding-top: 0px;
+}
+.module > div {
+	padding:10px; 
+}
+
+.module  .list-title {
+	margin-bottom: 10px;
+}
+
+#nsync-add-site, .check {
+	padding: 5px;
+    margin-left: 10px;
+	height:20px;
+	background-color:#333;
+	 display: inline-block;
+	 color:#fff;
+	 cursor:pointer;
+}
+.check {
+	display:none;
+	width:80px;
+	text-align:center;
+}
+
+#search-site-results {
+	padding:10px;
+    display:none;
+}
+#nsync-add-site:hover, .check:hover {
+	background-color:rgb(119, 119, 119);
+}
+#nsync-site-search{
+	 display: inline-block;
+    float: left;
+}
+#nsync-nav div {
+	display: inline-block;
+    width: 100px;
+    background-color: #333;
+    padding: 5px;
+    cursor: pointer;
+    text-align: center;
+    margin-left: 10px;
+}
+#nsync-nav div p {
+	color: #fff;
+	margin: 0px;
+	cursor: pointer;
+}
+#nsync-nav {
+
+    margin-bottom: 20px;
+}
+
+#nsync-nav div:hover {
+	background-color: #777;
+}
+div#current {
+	background-color: #777;
+}
+.general, .add {
+	display: none;
+}
+
+.module .upload-dir {
+	display: none;
 }
