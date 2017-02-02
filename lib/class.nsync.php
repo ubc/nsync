@@ -79,7 +79,7 @@ class Nsync {
 		$final_html .=  self::createPostInformation();
 		$final_html .=  "</div>";
 		
-		echo self::escapeOutput( $final_html );
+		echo  $final_html ;
 		
 	}
 	
@@ -571,9 +571,10 @@ class Nsync {
 		if ( current_user_can( 'manage_sites' ) ) {
 		
 			wp_enqueue_script( 'nsync-add-site' );
-			wp_enqueue_script( 'nsync-ui' );
+			
 		}
 		
+		wp_enqueue_script( 'nsync-ui' );
 		wp_enqueue_style( 'nsync-post-writing' );
 	}
 	
