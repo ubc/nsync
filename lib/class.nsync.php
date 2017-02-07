@@ -106,6 +106,8 @@ class Nsync {
 		
 		$allowedposttags['label']    = $allowed_atts;
 		$allowedposttags['input']    = $allowed_atts;
+		$allowedposttags['select']   = $allowed_atts;
+		$allowedposttags['option']   = $allowed_atts;
 		$allowedposttags['strong']   = $allowed_atts;
 		$allowedposttags['small']    = $allowed_atts;
 		$allowedposttags['span']     = $allowed_atts;
